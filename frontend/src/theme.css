@@ -37,9 +37,9 @@
 }
 
 @theme inline {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "Poppins", "Segoe UI", sans-serif;
+  --font-display: "Poppins", "Segoe UI", sans-serif;
+  --font-mono: "Poppins", "Segoe UI", sans-serif;
   --color-paper: var(--paper);
   --color-surface: var(--surface);
   --color-ink: var(--ink);
@@ -62,6 +62,10 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
 }
 
 ::selection { background: color-mix(in srgb, var(--brand) 22%, transparent); }

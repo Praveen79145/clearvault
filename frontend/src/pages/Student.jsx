@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { api, fullDate } from "../api.js";
 import Icon from "../icons.jsx";
@@ -50,6 +51,7 @@ export default function Student() {
   const [loadErr, setLoadErr] = useState("");
   const [cancelTarget, setCancelTarget] = useState(null); // { id, purpose }
   const poll = useRef(false);
+  const reduceMotion = useReducedMotion();
 
   const load = useCallback(async () => {
     const [t, l] = await Promise.all([api("/api/request-types"), api("/api/requests/list")]);
@@ -110,39 +112,46 @@ export default function Student() {
       )}
 
       {types && types.length > 0 && (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-8">
+        <motion.div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-8" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.45, ease: "easeOut" }}>
           {types.map((t, i) => {
             const existing = latestByType[t.id];
             return (
-              <Link key={t.id} to={`/student/request/${t.id}`} className="req-card group">
-                <div className="flex items-center justify-between">
-                  <span className="w-10 h-10 border border-line-strong rounded-md grid place-items-center text-brand">
-                    <Icon name={t.icon} size={18} />
-                  </span>
-                  {existing ? (
-                    <span className="inline-flex items-center gap-2">
-                      <span className="font-mono text-[10px] font-semibold text-muted tabular-nums">
-                        {existing.cleared}/{existing.total} cleared
+              <motion.div
+                key={t.id}
+                initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.42, delay: i * 0.06, ease: "easeOut" }}
+              >
+                <Link to={`/student/request/${t.id}`} className="req-card group">
+                  <div className="flex items-center justify-between">
+                    <span className="w-10 h-10 border border-line-strong rounded-md grid place-items-center text-brand">
+                      <Icon name={t.icon} size={18} />
+                    </span>
+                    {existing ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="font-mono text-[10px] font-semibold text-muted tabular-nums">
+                          {existing.cleared}/{existing.total} cleared
+                        </span>
+                        <span className={`badge ${OV[existing.overall][0]}`}>{OV[existing.overall][1]}</span>
                       </span>
-                      <span className={`badge ${OV[existing.overall][0]}`}>{OV[existing.overall][1]}</span>
-                    </span>
-                  ) : (
-                    <span className="font-mono text-[10px] font-semibold text-muted">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                  )}
-                </div>
-                <h3 className="display text-xl mt-4 font-semibold leading-snug">{t.title}</h3>
-                <p className="text-[13px] text-muted mt-1.5 leading-relaxed flex-1">{t.blurb}</p>
-                {t.requires && <OfficesStrip requires={t.requires} />}
-                <p className="mt-3 pt-3 border-t border-line text-[13px] font-semibold inline-flex items-center gap-1.5">
-                  {existing ? "Continue request" : "Start request"}
-                  <Icon name="arrow-right" size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </p>
-              </Link>
+                    ) : (
+                      <span className="font-mono text-[10px] font-semibold text-muted">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="display text-xl mt-4 font-semibold leading-snug">{t.title}</h3>
+                  <p className="text-[13px] text-muted mt-1.5 leading-relaxed flex-1">{t.blurb}</p>
+                  {t.requires && <OfficesStrip requires={t.requires} />}
+                  <p className="mt-3 pt-3 border-t border-line text-[13px] font-semibold inline-flex items-center gap-1.5">
+                    {existing ? "Continue request" : "Start request"}
+                    <Icon name="arrow-right" size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  </p>
+                </Link>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* ── Existing requests ─────────────────────────────────── */}
@@ -159,10 +168,16 @@ export default function Student() {
         )}
 
         {requests && requests.length > 0 && (
-          <div className="card mt-5 overflow-hidden">
+          <motion.div className="card mt-5 overflow-hidden" initial={reduceMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}>
             <div className="divide-y divide-line">
-              {requests.map((r) => (
-                <div key={r.id} className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4">
+              {requests.map((r, idx) => (
+                <motion.div
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4"
+                  initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: idx * 0.06, ease: "easeOut" }}
+                >
                   <Link to={`/student/request/${r.type}`}
                     className="flex flex-wrap items-center gap-x-5 gap-y-2 flex-1 min-w-[260px] hover:opacity-80 transition">
                     <div className="min-w-[190px]">
@@ -190,10 +205,10 @@ export default function Student() {
                       <Icon name="arrow-right" size={15} className="text-muted hover:text-ink transition" />
                     </Link>
                   </span>
-                </div>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
