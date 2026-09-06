@@ -32,7 +32,7 @@ const OAUTH_ERRORS = {
   unverified_email: "That Google account's email address is not verified by Google.",
   not_rgukt: null, // handled specially (needs email)
   server_error: 'Something went wrong on our side while signing you in. Please try again.',
-  not_configured: "Google sign-in isn't configured on this deployment yet. Use a demo credential below or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (see GOOGLE_SETUP.md).",
+  not_configured: "Google sign-in isn't configured on this deployment yet. Use a demo credential below, or set GOOGLE_CLIENT_ID/SECRET (see GOOGLE_SETUP.md).",
 };
 
 export default function Login() {
@@ -101,13 +101,10 @@ export default function Login() {
         <div className="w-full max-w-[400px]">
           <div className="lg:hidden mb-10"><Logo sub="Registrar e-Clearance" /></div>
           <p className="kicker">Secure sign in</p>
-          <h2 className="display text-[30px] sm:text-[36px] leading-[1.08] mt-2 max-w-[14ch]">
-            Sign in with your RGUKT account
-          </h2>
+          <h2 className="display text-[32px] mt-2 font-semibold">Sign in with your RGUKT account</h2>
           <p className="text-[13.5px] text-muted mt-2 leading-relaxed">
             Use your RGUKT student Google account to continue.
-            <br />
-            <span className="font-mono text-[12px] text-ink">r220246@rguktrkv.ac.in</span>
+            <br /><span className="font-mono text-[12px] text-ink">[r / o / n / s]XXXXXX@rguktrkv.ac.in</span>
           </p>
 
           {/* OAuth outcome banner */}

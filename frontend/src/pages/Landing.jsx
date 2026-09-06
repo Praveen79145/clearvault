@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
@@ -30,33 +29,33 @@ const STEPS = [
 const FEATURES = [
   [
     "zap",
-    "One request, one track",
-    "Students submit their clearance from one place and follow the status of each department.",
+    "Workflow-based routing",
+    "Each clearance automatically reaches the departments required for that request.",
   ],
   [
     "shield",
-    "Review and approve securely",
-    "Authorities can review requests, approve decisions, and manage follow-ups efficiently.",
+    "Secure digital approval",
+    "Officer approvals are digitally signed and protected against tampering.",
   ],
   [
     "activity",
     "Live status tracking",
-    "Students and officers can see where each request stands at every stage of the process.",
+    "Students can see the approval status of every department in real time.",
   ],
   [
     "qr-code",
-    "Digitally issued certificates",
-    "Certificates are generated and verified with a secure digital record.",
+    "Certificate verification",
+    "Generated certificates can be verified using a QR code.",
   ],
   [
     "lock",
-    "Transparent accountability",
-    "Every approval and decision is recorded clearly for review and accountability.",
+    "Role-based access",
+    "Each officer can access only the department and requests assigned to them.",
   ],
   [
     "file-text",
-    "Clear institutional records",
-    "Approvals are documented in a complete, traceable record that supports university oversight.",
+    "Complete audit trail",
+    "Every approval, rejection and status change is recorded for verification.",
   ],
 ];
 
@@ -67,21 +66,32 @@ const HERO_FEATURES = [
   ["leaf", "A Paperless,", "Greener Campus"],
 ];
 
-export default function Landing() {
-  const reduceMotion = useReducedMotion();
+const DEMO_STUDENTS = [
+  ["Ananya Verma · student", "ananya@campus.edu", "student123"],
+  ["Rohan Mehta · certificate ready", "rohan@campus.edu", "student123"],
+  ["Karan Patel · 3/9 cleared", "karan@campus.edu", "student123"],
+];
 
+const DEMO_OFFICERS = [
+  ["Finance Officer", "finance@campus.edu"],
+  ["Library Officer", "library@campus.edu"],
+  ["Hostel Warden", "hostel@campus.edu"],
+  ["Sports Officer", "sports@campus.edu"],
+  ["Physics Lab Officer", "physics@campus.edu"],
+  ["Chemistry Lab Officer", "chemistry@campus.edu"],
+  ["Dean", "dean@campus.edu"],
+  ["Administrative Officer", "ao@campus.edu"],
+  ["Director", "director@campus.edu"],
+];
+
+export default function Landing() {
   return (
     <div className="min-h-screen bg-surface text-ink">
       {/* =========================================================
           HEADER
           EXACTLY ONE THEME TOGGLE + ONE HEADER SIGN-IN
       ========================================================= */}
-      <motion.header
-        className="relative z-50 border-b border-line bg-surface/95 backdrop-blur-md"
-        initial={reduceMotion ? false : { opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.42, ease: "easeOut" }}
-      >
+      <header className="relative z-50 border-b border-line bg-surface/95 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[70px] flex items-center justify-between">
           {/* Logo */}
           <Logo sub="Registrar e-Clearance" />
@@ -99,27 +109,22 @@ export default function Landing() {
             </Link>
           </div>
         </div>
-      </motion.header>
+      </header>
 
       {/* =========================================================
           HERO
       ========================================================= */}
-      <motion.section className="relative min-h-[calc(100svh-70px)] overflow-hidden border-0" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: "easeOut" }}>
+      <section className="relative min-h-[calc(100svh-70px)] overflow-hidden">
         {/* Campus background */}
-        <motion.div
-          className="absolute inset-y-0"
+        <div
+          className="absolute inset-0"
           style={{
-            left: "max(0px, calc((100vw - 72rem) / 2))",
-            right: "max(0px, calc((100vw - 72rem) / 2))",
             backgroundImage: "url(/campus-bg.png)",
             backgroundSize: "cover",
             backgroundPosition: "center center",
             backgroundRepeat: "no-repeat",
           }}
           aria-hidden="true"
-          initial={reduceMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.75, ease: "easeOut" }}
         />
 
         {/* Left readability overlay */}
@@ -145,56 +150,58 @@ export default function Landing() {
         {/* Hero content */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 min-h-[calc(100svh-70px)] flex flex-col justify-between">
           {/* Main hero */}
-          <motion.div className="pt-20 sm:pt-24 md:pt-28 max-w-[610px]" initial={reduceMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }}>
+          <div className="pt-20 sm:pt-24 md:pt-28 max-w-[610px]">
             <p className="kicker">
               Office of the Registrar · RGUKT RK Valley
             </p>
 
             <h1 className="display mt-5 text-[44px] leading-[1.02] sm:text-[58px] md:text-[68px]">
-              Digital clearance for students.
-              <span className="block">Simpler administration for</span>
-              <span className="block text-brand not-italic">
-                everyone.
-              </span>
+              Clear your dues
+              <br />
+              without leaving
+              <br />
+              <em className="text-brand not-italic">
+                your desk.
+              </em>
             </h1>
 
             <p className="mt-6 max-w-[560px] text-[15px] sm:text-[16px] leading-relaxed text-muted">
-              ClearVault brings student no-dues clearance into one secure
-              platform, connecting students with the departments and university
-              authorities responsible for their approval.
+              ClearVault replaces the paper no-dues process with one
+              digital platform for Finance, Library, Hostel, Sports,
+              Labs, Dean, AO and Director approvals.
             </p>
 
             {/* Hero buttons */}
             <div className="mt-8 flex flex-wrap gap-3">
-              <motion.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                <Link to="/login" className="btn btn-brand !px-6 !py-3">
-                  Sign in to the portal
-                  <Icon name="arrow-right" size={15} />
-                </Link>
-              </motion.div>
+              <Link
+                to="/login"
+                className="btn btn-brand !px-6 !py-3"
+              >
+                Sign in to the portal
+                <Icon name="arrow-right" size={15} />
+              </Link>
 
-              <motion.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                <Link to="/verify/CV-26-R4J8KX" className="btn btn-outline !px-5 !py-3" style={{
+              <Link
+                to="/verify/CV-26-R4J8KX"
+                className="btn btn-outline !px-5 !py-3"
+                style={{
                   background: "rgba(255,255,255,0.82)",
                   backdropFilter: "blur(5px)",
-                }}>
-                  <Icon name="qr-code" size={15} />
-                  Verify a sample certificate
-                </Link>
-              </motion.div>
+                }}
+              >
+                <Icon name="qr-code" size={15} />
+                Verify a sample certificate
+              </Link>
             </div>
-          </motion.div>
+          </div>
 
           {/* Hero features */}
           <div className="pb-10 sm:pb-12 md:pb-14 pt-14">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-7 max-w-[700px]">
-              {HERO_FEATURES.map(([icon, l1, l2], index) => (
-                <motion.div
+              {HERO_FEATURES.map(([icon, l1, l2]) => (
+                <div
                   key={`${icon}-${l1}`}
                   className="flex flex-col gap-2"
-                  initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.38, delay: index * 0.07, ease: "easeOut" }}
                 >
                   <span className="text-brand">
                     <Icon
@@ -209,33 +216,29 @@ export default function Landing() {
                     <br />
                     {l2}
                   </p>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
         </div>
-      </motion.section>
+      </section>
 
       {/* =========================================================
           PROCESS
       ========================================================= */}
-      <motion.section className="border-b border-line bg-surface" initial={reduceMotion ? false : { opacity: 0, y: 14 }} whileInView={reduceMotion ? {} : { opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+      <section className="border-b border-line bg-surface">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
           <p className="kicker">The process</p>
 
           <h2 className="display text-3xl sm:text-4xl mt-3">
-            One process. Every department. No queues.
+            Four steps. Zero queues.
           </h2>
 
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10">
-            {STEPS.map((step, index) => (
-              <motion.div
+            {STEPS.map((step) => (
+              <div
                 key={step.n}
                 className="border-t-2 border-line-strong pt-4"
-                initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-                whileInView={reduceMotion ? {} : { opacity: 1, y: 0 }}
-                viewport={{ once: false, amount: 0.2 }}
-                transition={{ duration: 0.42, delay: index * 0.06, ease: "easeOut" }}
               >
                 <p className="font-mono text-[11px] font-semibold text-brand">
                   {step.n}
@@ -248,32 +251,28 @@ export default function Landing() {
                 <p className="text-[13px] leading-relaxed text-muted mt-2">
                   {step.d}
                 </p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
-      </motion.section>
+      </section>
 
       {/* =========================================================
           FEATURES
       ========================================================= */}
-      <motion.section className="border-b border-line bg-surface" initial={reduceMotion ? false : { opacity: 0, y: 14 }} whileInView={reduceMotion ? {} : { opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.15 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+      <section className="border-b border-line bg-surface">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
           <p className="kicker">Capabilities</p>
 
           <h2 className="display text-3xl sm:text-4xl mt-3">
-            Built for students and university administration.
+            Built for digital campus governance.
           </h2>
 
           <div className="mt-10 grid md:grid-cols-2 gap-x-10">
-            {FEATURES.map(([icon, title, description], index) => (
-              <motion.div
+            {FEATURES.map(([icon, title, description]) => (
+              <div
                 key={title}
                 className="flex gap-4 py-5 border-b border-line"
-                initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-                whileInView={reduceMotion ? {} : { opacity: 1, y: 0 }}
-                viewport={{ once: false, amount: 0.2 }}
-                transition={{ duration: 0.42, delay: index * 0.05, ease: "easeOut" }}
               >
                 <span className="mt-0.5 w-9 h-9 shrink-0 border border-line-strong rounded-md grid place-items-center text-brand">
                   <Icon name={icon} size={17} />
@@ -288,11 +287,126 @@ export default function Landing() {
                     {description}
                   </p>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
-      </motion.section>
+      </section>
+
+      {/* =========================================================
+          DEMO ACCOUNTS
+      ========================================================= */}
+      <section className="border-b border-line bg-surface">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+          <p className="kicker">Try it now</p>
+
+          <h2 className="display text-3xl sm:text-4xl mt-3">
+            Demo accounts
+          </h2>
+
+          <p className="text-sm text-muted mt-3 max-w-lg">
+            The registry includes demo students, approval officers
+            and an administrator for testing the complete workflow.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-6 mt-8 items-start">
+            {/* Students */}
+            <div className="card overflow-hidden">
+              <p className="kicker px-5 pt-4 pb-3">
+                Students
+              </p>
+
+              <div className="border-t border-line divide-y divide-line">
+                {DEMO_STUDENTS.map(([role, email, password]) => (
+                  <div
+                    key={email}
+                    className="flex items-center gap-4 px-5 py-3.5"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-[13.5px]">
+                        {role}
+                      </p>
+
+                      <p className="font-mono text-[12px] text-muted">
+                        {email} · {password}
+                      </p>
+                    </div>
+
+                    <Link
+                      to={`/login?email=${encodeURIComponent(
+                        email
+                      )}&pw=${password}`}
+                      className="btn btn-outline btn-sm"
+                    >
+                      Continue
+                      <Icon name="arrow-right" size={13} />
+                    </Link>
+                  </div>
+                ))}
+
+                {/* Admin */}
+                <div className="flex items-center gap-4 px-5 py-3.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[13.5px]">
+                      Administrator
+                    </p>
+
+                    <p className="font-mono text-[12px] text-muted">
+                      admin@campus.edu · admin123
+                    </p>
+                  </div>
+
+                  <Link
+                    to={`/login?email=${encodeURIComponent(
+                      "admin@campus.edu"
+                    )}&pw=admin123`}
+                    className="btn btn-outline btn-sm"
+                  >
+                    Continue
+                    <Icon name="arrow-right" size={13} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Officers */}
+            <div className="card overflow-hidden">
+              <p className="kicker px-5 pt-4 pb-3">
+                Approval offices
+              </p>
+
+              <div className="border-t border-line divide-y divide-line">
+                {DEMO_OFFICERS.map(([role, email]) => (
+                  <div
+                    key={email}
+                    className="flex items-center gap-4 px-5 py-3.5"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-[13.5px]">
+                        {role}
+                      </p>
+
+                      <p className="font-mono text-[12px] text-muted">
+                        {email}
+                      </p>
+                    </div>
+
+                    <Link
+                      to={`/login?email=${encodeURIComponent(
+                        email
+                      )}&pw=staff123`}
+                      className="btn btn-outline btn-sm"
+                    >
+                      Continue
+                      <Icon name="arrow-right" size={13} />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* =========================================================
           FOOTER
