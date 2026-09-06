@@ -33,18 +33,23 @@ const notify = async (userId, message, type = "info") =>
 const audit = async (actorName, action, detail) =>
   must(await sb.from("audit_log").insert({ actor_name: actorName, action, detail }));
 
-/** Write helper: if NOT-YET-MIGRATED columns are referenced, strip them and retry. */
-async function compatWrite(label, builder, row) {
-  let payload = { ...row };
+/** Write helper: if NOT-YET-MIGRATED columns are referenced, strip them and retry.
+ *  Works for BOTH a single row object and an ARRAY of rows (bulk insert) —
+ *  spreading an array with { ...arr } would corrupt it into { "0": row, "1": row… },
+ *  which is exactly what produced the bogus 'column "0" missing' errors. */
+async function compatWrite(label, builder, input) {
+  const isArray = Array.isArray(input);
+  let payload = isArray ? input.map((r) => ({ ...r })) : { ...input };
   let res = await builder(payload);
   let guard = 0;
   while (res?.error && guard++ < 5) {
     const m = res.error.message?.match(/column ['"]?([\w_]+)['"]? .*(does not exist|not found)/i) ||
               res.error.message?.match(/Could not find the ['"]?([\w_]+)['"]? column/i);
     if (!m) break;
-    console.warn(`[supabase] ${label}: column "${m[1]}" missing — run the ALTERs in backend/supabase/schema.sql. Retrying without it.`);
-    const { [m[1]]: _drop, ...rest } = payload;
-    payload = rest;
+    const col = m[1];
+    console.warn(`[supabase] ${label}: column "${col}" missing — run the ALTERs in backend/supabase/schema.sql. Retrying without it.`);
+    if (isArray) payload = payload.map((r) => { const { [col]: _drop, ...rest } = r; return rest; });
+    else { const { [col]: _drop, ...rest } = payload; payload = rest; }
     res = await builder(payload);
   }
   return res;
@@ -103,6 +108,17 @@ export async function getActiveRequest(studentId) {
   const rows = must(await sb.from("clearance_requests").select("*").eq("student_id", studentId).order("created_at", { ascending: false }).limit(1));
   return reqRow(rows[0] || null);
 }
+/** Central status derivation — CANCELLED is terminal and outranks everything. */
+const deriveOverall = (req, clearanceRows) => {
+  if (req?.cancelledAt) return "CANCELLED";
+  const cs = clearanceRows || [];
+  const required = requiredDeptsForRequest(req);
+  const allCleared = required.every((d) => cs.some((c) => normDept(c.dept ?? c.department_id) === d && c.status === "APPROVED"));
+  if (allCleared) return "COMPLETED";
+  if (cs.some((c) => c.status === "REJECTED")) return "ACTION_REQUIRED";
+  return "IN_PROGRESS";
+};
+
 export async function listStudentRequests(studentId) {
   const rows = must(await sb.from("clearance_requests").select("*").eq("student_id", studentId).order("created_at", { ascending: false }));
   const requests = rows.map(reqRow);
@@ -110,10 +126,8 @@ export async function listStudentRequests(studentId) {
   const cls = must(await sb.from("clearances").select("request_id,department_id,status").in("request_id", requests.map((r) => r.id)));
   return requests.map((r) => {
     const cs = cls.filter((c) => c.request_id === r.id);
-    const required = requiredDeptsForRequest(r);
-    const allCleared = required.every((d) => cs.some((c) => normDept(c.department_id) === d && c.status === "APPROVED"));
-    const overall = allCleared ? "COMPLETED" : cs.some((c) => c.status === "REJECTED") ? "ACTION_REQUIRED" : "IN_PROGRESS";
-    return { ...r, type: requestTypeOf(r), overall, total: required.length, cleared: cs.filter((c) => c.status === "APPROVED").length };
+    // deriveOverall checks cancelledAt FIRST — dashboard shows CANCELLED, never a stale IN_PROGRESS
+    return { ...r, type: requestTypeOf(r), overall: deriveOverall(r, cs), total: requiredDeptsForRequest(r).length, cleared: cs.filter((c) => c.status === "APPROVED").length };
   });
 }
 export async function clearancesFor(requestId) {
@@ -124,14 +138,8 @@ export async function clearancesFor(requestId) {
 }
 export async function overallStatus(requestId) {
   const req = await findRequestById(requestId);
-  if (req?.cancelledAt) return "CANCELLED";              // terminal — nothing can revive it
-  const cs = await clearancesFor(requestId);
-  // Backend rule: EVERY mandatory office must be CLEARED — nothing else counts.
-  const allCleared = requiredDeptsForRequest(req).every((d) =>
-    cs.some((c) => c.dept === d && c.status === "APPROVED"));
-  if (allCleared) return "COMPLETED";
-  if (cs.some((c) => c.status === "REJECTED")) return "ACTION_REQUIRED";
-  return "IN_PROGRESS";
+  if (!req) return "IN_PROGRESS";
+  return deriveOverall(req, await clearancesFor(requestId)); // CANCELLED first — terminal
 }
 export async function deptQueue(dept) {
   const mine = normDept(dept);
@@ -154,14 +162,38 @@ export async function deptQueue(dept) {
     .sort((a, b) => (a.status === "PENDING" ? 0 : 1) - (b.status === "PENDING" ? 0 : 1) || b.request.createdAt.localeCompare(a.request.createdAt));
 }
 
+/**
+ * Create a request and its approval tasks — correct order, every time:
+ *   1. insert the clearance_requests row and keep its generated ID
+ *   2. fan out ONE clearance per mandatory office (typeObj.requires, validated
+ *      against the department registry) with that request_id attached
+ *   3. return the complete request
+ * `status` is sent explicitly (matches the schema default 'PENDING' even if a
+ * database was created before the default existed).
+ */
 export async function createRequest(student, typeObj) {
-  const row = must(await sb.from("clearance_requests").insert({ student_id: student.id, purpose: typeObj.purpose }).select().single());
+  // 1) parent row first — request_id comes from here, never from the client
+  const row = must(await sb
+    .from("clearance_requests")
+    .insert({ student_id: student.id, purpose: typeObj.purpose })
+    .select()
+    .single());
   const req = reqRow(row);
+  if (!req?.id) throw new Error("[supabase] clearance_requests insert returned no id — request not created");
+
+  // 2) mandatory-office fan-out, validated against the live department registry
+  const unknown = (typeObj.requires || []).filter((d) => !DEPTS.some((dep) => dep.id === d));
+  if (unknown.length) throw new Error(`Unknown department(s) in workflow: ${unknown.join(", ")}`);
   const inserts = typeObj.requires.map((d) => ({
-    request_id: req.id, department_id: d,
+    request_id: req.id,      // real generated ID — satisfies NOT NULL
+    department_id: d,        // FINANCE | LIBRARY | HOSTEL | SPORTS | PHYSICS_LAB | CHEMISTRY_LAB | DEAN | AO | DIRECTOR
+    status: "PENDING",
     dues: (student.dues && student.dues[d]) || null,
   }));
+  // compatWrite handles the ARRAY correctly (no object-spread corruption)
   must(await compatWrite("clearances.insert", (r) => sb.from("clearances").insert(r), inserts));
+
+  // 3) side effects + return
   await notify(student.id, `${typeObj.title} filed — routed to ${typeObj.requires.length} ${typeObj.requires.length === 1 ? "office" : "offices"}.`);
   await audit(student.name, "REQUEST_CREATED", `${typeObj.title} · requires ${typeObj.requires.join(", ")}`);
   return req;
@@ -313,13 +345,7 @@ export async function adminStats() {
   const clearances = must(await sb.from("clearances").select("request_id,department_id,status"));
   const users = must(await sb.from("profiles").select("role"));
 
-  const overallFor = (r) => {
-    const cs = clearances.filter((c) => c.request_id === r.id);
-    const required = requiredDeptsForType(requestTypeOf(r));
-    if (required.every((d) => cs.some((c) => normDept(c.department_id) === d && c.status === "APPROVED"))) return "COMPLETED";
-    if (cs.some((c) => c.status === "REJECTED")) return "ACTION_REQUIRED";
-    return "IN_PROGRESS";
-  };
+  const overallFor = (r) => deriveOverall(r, clearances.filter((c) => c.request_id === r.id));
   for (const r of requests) r.overall = overallFor(r);
   const completed = requests.filter((r) => r.overall === "COMPLETED");
   const avgHours = completed.length
