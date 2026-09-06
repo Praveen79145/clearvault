@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, fullDate } from "../api.js";
 import Icon, { DEPT_ICON } from "../icons.jsx";
@@ -21,20 +20,13 @@ const OVERALL = {
 const CANCELLABLE = (overall) => overall === "IN_PROGRESS" || overall === "ACTION_REQUIRED";
 
 function Segments({ clearances }) {
-  const reduceMotion = useReducedMotion();
-
   return (
     <div className="flex gap-1.5 mt-5" role="img" aria-label="Office progress">
       {clearances.map((c) => (
         <div key={c.id}
           className={`seg flex-1 ${c.status === "APPROVED" ? "seg-good" : c.status === "REJECTED" ? "seg-bad" : "seg-wait"}`}
           title={`${c.deptName}: ${META[c.status].label}`}>
-          <motion.i
-            initial={reduceMotion ? false : { scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            style={{ originX: 0, display: "block", height: "100%", width: "100%" }}
-          />
+          <i />
         </div>
       ))}
     </div>
