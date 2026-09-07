@@ -287,12 +287,32 @@ export async function getStudentDues(studentId, dept) {
     // No clearance rows found for this student+dept — fall back to any stored
     // per-profile dues snapshot (seeded) or compute a stable fixture.
     const prof = must(await sb.from("profiles").select("roll_no,dues").eq("id", studentId).maybeSingle());
+    console.log(`[dues] student=${studentId} fallback to profile.dues; departments=${Object.keys(prof?.dues || {}).join(",")}`);
     if (prof && prof.dues) {
       const raw = prof.dues && prof.dues[mine];
       if (raw) {
         // If raw is a v2 snapshot or an array of legacy lines, normalize it.
         if (raw.v === 2) {
-          return { dues: raw, clearance: null };
+            // Ensure total is present and lines exist
+            if (typeof raw.total === "undefined") {
+              const total = (raw.lines || []).reduce((s, x) => s + (Number(x.amount || 0)), 0);
+              raw.total = total;
+              raw.status = total > 0 ? "DUES_FOUND" : "NO_DUES";
+            }
+            // Special-case FINANCE: treat scholarship as deduction (tuition - scholarship)
+            if (mine === "FINANCE") {
+              const lines = raw.lines || [];
+              const tu = lines.find((l) => /tuition/i.test(l.label)) || { amount: 0 };
+              const sch = lines.find((l) => /scholarship/i.test(l.label)) || { amount: 0 };
+              const tuition = Number(tu.amount || 0);
+              const scholarship = Number(sch.amount || 0);
+              const financeTotal = Math.max(0, tuition - scholarship);
+              raw.total = financeTotal;
+              raw.status = financeTotal > 0 ? "DUES_FOUND" : "NO_DUES";
+              // keep lines as-is but expose computed total
+              console.log(`[dues] financeTotal student=${studentId} total=${financeTotal}`);
+            }
+            return { dues: raw, clearance: null };
         }
         if (Array.isArray(raw)) {
           return { dues: normalizeDues(raw, { rollNo: prof.roll_no || null, dept: mine, checkedAt: raw.checkedAt || new Date().toISOString() }), clearance: null };
@@ -363,17 +383,68 @@ export async function markNotificationsRead(userId) {
 
 // ─── Account maintenance ────────────────────────────────────────────────────
 /** Self-service student registration (Login page → Register tab). */
+async function findUserByRollNo(rollNo) {
+  const normalized = String(rollNo || "").trim().toUpperCase();
+  if (!normalized) return null;
+
+  const { data, error } = await sb.from("profiles").select("*").eq("roll_no", normalized).maybeSingle();
+  if (error) {
+    if (/column .*roll_no.*(does not exist|not found)|Could not find the .*roll_no.*column/i.test(error.message || "")) return null;
+    throw new Error(`[supabase] ${error.message}`);
+  }
+  return data ? userRow(data) : null;
+}
+
+async function findUserByPhone(phone) {
+  const normalized = String(phone || "").trim();
+  if (!normalized) return null;
+
+  const { data, error } = await sb.from("profiles").select("*").eq("phone", normalized).maybeSingle();
+  if (error) {
+    if (/column .*phone.*(does not exist|not found)|Could not find the .*phone.*column/i.test(error.message || "")) return null;
+    throw new Error(`[supabase] ${error.message}`);
+  }
+  return data ? userRow(data) : null;
+}
+
 export async function registerStudent({ name, email, password, rollNo, phone }) {
   email = String(email || "").trim().toLowerCase();
-  const dup = must(await sb.from("profiles").select("id").eq("email", email).maybeSingle());
-  if (dup) throw new Error("An account with this email already exists");
+  const normalizedRollNo = String(rollNo || "").trim().toUpperCase();
+  const normalizedPhone = String(phone || "").trim();
+
+  const existingEmail = await findUserByEmail(email);
+  if (existingEmail) throw new Error("An account with this email already exists.");
+
+  if (normalizedRollNo) {
+    const existingRoll = await findUserByRollNo(normalizedRollNo);
+    if (existingRoll) throw new Error("This student ID is already registered.");
+  }
+
+  if (normalizedPhone) {
+    const existingPhone = await findUserByPhone(normalizedPhone);
+    if (existingPhone) throw new Error("This phone number is already registered.");
+  }
+
   const salt = crypto.randomBytes(8).toString("hex");
-  // compatWrite drops `phone` if the schema predates migration-student-registration.sql
-  const res = await compatWrite("profiles.register", (r) => sb.from("profiles").insert(r).select().single(), {
+  const payload = {
     name: String(name).trim(), email, role: "STUDENT", dept: null,
-    roll_no: String(rollNo).trim().toUpperCase(), phone: phone || null,
+    roll_no: normalizedRollNo, phone: normalizedPhone || null,
     salt, password_hash: hashPassword(password, salt), disabled: false,
-  });
+  };
+
+  // compatWrite drops `phone` if the schema predates migration-student-registration.sql
+  const res = await compatWrite("profiles.register", (r) => sb.from("profiles").insert(r).select().single(), payload);
+  if (res?.error) {
+    const msg = String(res.error.message || "");
+    const lowered = msg.toLowerCase();
+    if (/duplicate key|23505|unique constraint/i.test(msg)) {
+      if (/email/i.test(lowered)) throw new Error("An account with this email already exists.");
+      if (/roll_no|student id|student_id/i.test(lowered)) throw new Error("This student ID is already registered.");
+      if (/phone/i.test(lowered)) throw new Error("This phone number is already registered.");
+    }
+    throw new Error(`[supabase] ${msg}`);
+  }
+
   const row = must(res);
   await safeAux("welcome notification", () =>
     notify(row.id, "Welcome to ClearVault. Raise your first clearance request from the dashboard.", "info"));

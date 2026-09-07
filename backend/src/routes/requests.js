@@ -45,6 +45,8 @@ router.get("/student/dues", requireRole("STUDENT"), async (req, res) => {
     const d = deptById(dept);
     return {
       id: dept, name: d.name, short: d.short, icon: d.icon, dues,
+      // expose `books` at the top-level for the frontend library modal
+      books: dues?.books || null,
       clearanceStatus: clearance?.status || "NOT_REQUESTED",
       officerDescription: clearance?.remarks || null,
       requestId: clearance?.requestId || null,

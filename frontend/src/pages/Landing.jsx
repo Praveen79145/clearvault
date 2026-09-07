@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import Icon from "../icons.jsx";
@@ -92,6 +92,7 @@ const DEMO_OFFICERS = [
 ];
 
 export default function Landing() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-surface text-ink">
       {/* =========================================================
@@ -339,15 +340,18 @@ export default function Landing() {
                       </p>
                     </div>
 
-                    <Link
-                      to={`/login?email=${encodeURIComponent(
-                        email
-                      )}&pw=${password}`}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate("/login", {
+                          state: { demoEmail: email, demoPassword: password },
+                        })
+                      }
                       className="btn btn-outline btn-sm"
                     >
                       Continue
                       <Icon name="arrow-right" size={13} />
-                    </Link>
+                    </button>
                   </div>
                 ))}
 

@@ -244,6 +244,16 @@ export function computeDues({ rollNo, requestId, dept, checkedAt }) {
     }
 
     // Recompute base total as lines (library fine may already be present) + booksTotal
+    // Ensure library fine exists only when there's an actual library liability.
+    // If there are no pending books and no other non-fine amounts, clear the fine.
+    const libFineIndex = outLines.findIndex((l) => l.label === "Library fine");
+    // Sum of amounts excluding the library fine line
+    const nonFineSum = outLines.reduce((a, l) => a + (l.label === "Library fine" ? 0 : (l.amount || 0)), 0);
+    if (pendingBooks.length === 0 && nonFineSum === 0 && libFineIndex >= 0) {
+      outLines[libFineIndex].amount = 0;
+      outLines[libFineIndex].detail = "No overdue fines on account";
+    }
+
     baseTotal = outLines.reduce((a, l) => a + (l.amount || 0), 0);
 
     return {
@@ -272,7 +282,33 @@ export function computeDues({ rollNo, requestId, dept, checkedAt }) {
  * Never throws — an unknown shape simply recomputes like a missing column.
  */
 export function normalizeDues(raw, { rollNo, requestId, dept, checkedAt } = {}) {
-  if (raw && raw.v === 2 && Array.isArray(raw.lines)) return raw;
+  if (raw && raw.v === 2 && Array.isArray(raw.lines)) {
+    // ensure total exists
+    if (typeof raw.total === "undefined") {
+      raw.total = (raw.lines || []).reduce((a, l) => a + (l.amount || 0), 0);
+      raw.status = raw.total > 0 ? "DUES_FOUND" : "NO_DUES";
+    }
+    // Defensive correction for LIBRARY snapshots: if there are no pending
+    // books and no other non-fine amounts, ensure Library fine is zero so a
+    // monetary charge never appears without an underlying liability.
+    try {
+      if (typeof dept !== "undefined" && String(dept).toUpperCase() === "LIBRARY") {
+        const outLines = (raw.lines || []).map((l) => ({ ...l }));
+        const libFineIndex = outLines.findIndex((l) => l.label === "Library fine");
+        const pendingIndex = outLines.findIndex((l) => l.label === "Books pending");
+        const pendingCount = pendingIndex >= 0 ? Number(outLines[pendingIndex].value || 0) : 0;
+        const nonFineSum = outLines.reduce((a, l) => a + (l.label === "Library fine" ? 0 : (l.amount || 0)), 0);
+        if (pendingCount === 0 && nonFineSum === 0 && libFineIndex >= 0) {
+          outLines[libFineIndex].amount = 0;
+          outLines[libFineIndex].detail = "No overdue fines on account";
+          raw.lines = outLines;
+          raw.total = outLines.reduce((a, l) => a + (l.amount || 0), 0);
+          raw.status = raw.total > 0 ? "DUES_FOUND" : "NO_DUES";
+        }
+      }
+    } catch (e) { /* non-fatal correction — ignore errors */ }
+    return raw;
+  }
   if (Array.isArray(raw)) {
     const lines = raw.map((d) => ({ label: d.label || "Due", detail: d.detail || "", amount: d.amount || 0 }));
     const total = lines.reduce((a, l) => a + l.amount, 0);

@@ -407,11 +407,25 @@ export async function cancelRequest(requestId, student, reason) {
 /** Self-service student registration (Login page → Register tab). */
 export async function registerStudent({ name, email, password, rollNo, phone }) {
   email = String(email || "").trim().toLowerCase();
-  if (db.users.find((u) => u.email === email)) throw new Error("An account with this email already exists");
+  const normalizedRollNo = String(rollNo || "").trim().toUpperCase();
+  const normalizedPhone = String(phone || "").trim();
+
+  if (db.users.find((u) => String(u.email || "").toLowerCase() === email)) {
+    throw new Error("An account with this email already exists.");
+  }
+
+  if (normalizedRollNo && db.users.find((u) => String(u.rollNo || "").trim().toUpperCase() === normalizedRollNo)) {
+    throw new Error("This student ID is already registered.");
+  }
+
+  if (normalizedPhone && db.users.find((u) => String(u.phone || "").trim() === normalizedPhone)) {
+    throw new Error("This phone number is already registered.");
+  }
+
   const salt = crypto.randomBytes(8).toString("hex");
   const u = {
     id: uid("usr"), name: String(name).trim(), email, role: "STUDENT", dept: null,
-    rollNo: String(rollNo).trim().toUpperCase(), phone: phone || null,
+    rollNo: normalizedRollNo, phone: normalizedPhone || null,
     salt, passwordHash: hashPassword(password, salt),
   };
   db.users.push(u);

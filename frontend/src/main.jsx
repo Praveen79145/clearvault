@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./theme.css";
 import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
 import Student from "./pages/Student.jsx";
 import RequestView from "./pages/RequestView.jsx";
 import Staff from "./pages/Staff.jsx";
@@ -17,6 +19,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/student" element={<Student />} />
         <Route path="/student/request/:type" element={<RequestView />} />
         <Route path="/staff" element={<Staff />} />

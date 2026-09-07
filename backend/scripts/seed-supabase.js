@@ -1,16 +1,3 @@
-// ────────────────────────────────────────────────────────────────────────────
-// Seeds (and REPAIRS) your Supabase project with the demo registry
-// (9 offices + workflows).
-//   Run:  npm run seed   (after .env has SUPABASE_URL + SERVICE ROLE key,
-//                         and after schema.sql has been run in the SQL editor)
-// Safe to run any number of times:
-//   · existing seed accounts are kept — BUT if an account cannot be verified
-//     with the CURRENT password hashing scheme (e.g. it was seeded by an older
-//     build with a different hash format), its hash is rewritten to match the
-//     seeded password. That is what repairs mysterious 401 "Invalid
-//     credentials" on known-good demo logins like chemistry@campus.edu.
-//   · demo history is only inserted when the registry is empty.
-// ────────────────────────────────────────────────────────────────────────────
 import "../src/env.js";
 import { createClient } from "@supabase/supabase-js";
 import { hashPassword, shortSign } from "../src/sign.js";
@@ -159,10 +146,33 @@ for (const u of USERS) {
     if (exists.password_hash === hashPassword(u.__pw, cachedSalt)) {
       console.log(`· keep  ${u.email}`);
       kept++;
+      // Even when keeping, ensure demo STUDENT rows receive latest seeded dues
+      if (u.role === "STUDENT") {
+        try {
+          const updates = {
+            name: u.name,
+            roll_no: u.roll_no || null,
+            dues: u.dues || null,
+          };
+          // If the schema doesn't include dues, this will error; ignore
+          await sb.from("profiles").update(updates).eq("id", exists.id);
+        } catch (e) {
+          // non-fatal — older databases may not have the column
+        }
+      }
       continue;
     }
     const salt = crypto.randomBytes(8).toString("hex");
     must(await sb.from("profiles").update({ salt, password_hash: hashPassword(u.__pw, salt) }).eq("id", exists.id));
+    // Also update seeded metadata + dues for existing student rows
+    if (u.role === "STUDENT") {
+      try {
+        const updates2 = { name: u.name, roll_no: u.roll_no || null, dues: u.dues || null };
+        await sb.from("profiles").update(updates2).eq("id", exists.id);
+      } catch (e) {
+        // ignore if column doesn't exist yet
+      }
+    }
     repaired++;
     console.log(`↺ repaired password hash for ${u.email} (was seeded with an older format)`);
     continue;
