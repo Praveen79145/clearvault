@@ -67,9 +67,16 @@ const HERO_FEATURES = [
 ];
 
 const DEMO_STUDENTS = [
-  ["Ananya Verma · student", "ananya@campus.edu", "student123"],
-  ["Rohan Mehta · certificate ready", "rohan@campus.edu", "student123"],
-  ["Karan Patel · 3/9 cleared", "karan@campus.edu", "student123"],
+  ["Aarav Kumar · student", "r220101@rguktrkv.ac.in", "student123"],
+  ["Bhavana Reddy · student", "r220102@rguktrkv.ac.in", "student123"],
+  ["Chaitanya N · student", "r220103@rguktrkv.ac.in", "student123"],
+  ["Divya Shetty · student", "r220104@rguktrkv.ac.in", "student123"],
+  ["Eesha Patel · student", "r220105@rguktrkv.ac.in", "student123"],
+  ["Farhan Mohammed · student", "r220106@rguktrkv.ac.in", "student123"],
+  ["Gayatri Thampi · student", "r220107@rguktrkv.ac.in", "student123"],
+  ["Harish Varma · student", "r220108@rguktrkv.ac.in", "student123"],
+  ["Indra Kumar · student", "r220109@rguktrkv.ac.in", "student123"],
+  ["Jaya Lal · student", "r220110@rguktrkv.ac.in", "student123"],
 ];
 
 const DEMO_OFFICERS = [

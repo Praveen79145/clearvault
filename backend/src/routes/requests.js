@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireRole } from "../auth.js";
 import {
-  createRequest, cancelRequest, getActiveRequest, clearancesFor, overallStatus, reapply,
+  createRequest, cancelRequest, getActiveRequest, clearancesFor, overallStatus, reapply, getStudentDues,
   findClearanceById, findRequestById, listStudentRequests,
 } from "../store.js";
 import { REQUEST_TYPES, findRequestType } from "../requestTypes.js";
@@ -29,6 +29,28 @@ router.get("/request-types", requireRole("STUDENT"), (_req, res) => {
 /** Every request this student has ever filed (typed + status) — powers "Your requests" */
 router.get("/requests/list", requireRole("STUDENT"), async (req, res) => {
   res.json({ requests: await listStudentRequests(req.user.id) });
+});
+
+/**
+ * Compact student-dashboard ledger for the major service departments.
+ * If this student has a request, its stored clearance snapshot is used—the
+ * exact same record the officer sees. Before a request exists, a stable
+ * student-ID fixture provides a pre-flight view without random page loads.
+ */
+router.get("/student/dues", requireRole("STUDENT"), async (req, res) => {
+  const ids = ["FINANCE", "LIBRARY", "HOSTEL", "SPORTS"];
+  const departments = await Promise.all(ids.map(async (dept) => {
+    const record = await getStudentDues(req.user.id, dept);
+    const { dues, clearance } = record;
+    const d = deptById(dept);
+    return {
+      id: dept, name: d.name, short: d.short, icon: d.icon, dues,
+      clearanceStatus: clearance?.status || "NOT_REQUESTED",
+      officerDescription: clearance?.remarks || null,
+      requestId: clearance?.requestId || null,
+    };
+  }));
+  res.json({ departments });
 });
 
 router.post("/requests", requireRole("STUDENT"), async (req, res) => {

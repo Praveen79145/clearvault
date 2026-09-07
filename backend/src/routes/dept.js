@@ -13,6 +13,18 @@ router.get("/clearances", requireRole("STAFF"), async (req, res) => {
   });
 });
 
+/** Load one exact review file when an officer opens it.  The queue is never a
+ * source of truth for a decision: this rechecks both the clearance and office. */
+router.get("/clearances/:id", requireRole("STAFF"), async (req, res) => {
+  const clearance = await findClearanceById(req.params.id);
+  if (!clearance) return res.status(404).json({ error: "Clearance not found" });
+  if (normDept(clearance.dept) !== normDept(req.user.dept))
+    return res.status(403).json({ error: "This clearance belongs to another office." });
+  const item = (await deptQueue(req.user.dept)).find((c) => c.id === clearance.id);
+  if (!item) return res.status(404).json({ error: "This clearance is no longer available for review." });
+  res.json({ clearance: item, deptInfo: publicDeptInfo(req.user.dept) });
+});
+
 router.put("/clearances/:id", requireRole("STAFF"), async (req, res) => {
   const { action, remarks } = req.body || {};
   const clearance = await findClearanceById(req.params.id);
@@ -24,8 +36,8 @@ router.put("/clearances/:id", requireRole("STAFF"), async (req, res) => {
     return res.status(400).json({ error: "This clearance has already been decided." });
 
   const approve = action === "APPROVE";
-  if (!approve && !(remarks || "").trim())
-    return res.status(400).json({ error: "A comment is required when returning/rejecting — the student must know what to fix." });
+  if (!(remarks || "").trim())
+    return res.status(400).json({ error: approve ? "An approval description is required for the student." : "A rejection description is required — the student must know what to fix." });
 
   try {
     await decide(clearance.id, approve, (remarks || "").trim(), req.user);

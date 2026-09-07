@@ -345,10 +345,17 @@ export default function RequestView() {
                   <>
                     <p>Cleared by <b className="text-ink">{c.approvedBy}</b> · {fullDate(c.signedAt)}</p>
                     <p className="font-mono text-[10.5px] text-good mt-1">SIGN {c.signatureHash}</p>
+                    {c.remarks && (
+                      <p className="mt-2 text-[13px] text-good">Approved — No dues found. <span className="font-medium">“{c.remarks}”</span></p>
+                    )}
                   </>
                 )}
                 {c.status === "REJECTED" && (
-                  <p><span className="text-bad font-medium">Officer's comment:</span> <span className="text-bad">&ldquo;{c.remarks}&rdquo;</span> <span className="block mt-1">— {c.approvedBy}</span></p>
+                  <div>
+                    <p className="text-[13px] text-bad font-semibold">Rejected — Dues found.</p>
+                    <p className="text-[13px] text-bad mt-1">&ldquo;{c.remarks}&rdquo;</p>
+                    {c.approvedBy && <p className="text-[12px] text-muted mt-1">— {c.approvedBy}</p>}
+                  </div>
                 )}
                 {c.status === "PENDING" && !isCancelled && (
                   <p className="flex items-center gap-2">

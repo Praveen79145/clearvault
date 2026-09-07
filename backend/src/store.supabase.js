@@ -8,6 +8,7 @@ import crypto from "crypto";
 import { shortSign, hashPassword } from "./sign.js";
 import { DEPTS, deptById, normDept } from "./departments.js";
 import { REQUEST_TYPES, requestTypeOf, requiredDeptsForRequest, requiredDeptsForType } from "./requestTypes.js";
+import { computeDues, normalizeDues, inr } from "./dues.js";
 
 export { DEPTS };
 
@@ -150,8 +151,12 @@ export async function deptQueue(dept) {
   return rows
     .map((c) => {
       const request = reqRow(c.request);
+      const student = publicUser(c.request.student);
       return {
-        ...clrRow(c), request, type: requestTypeOf(c.request), student: publicUser(c.request.student),
+        ...clrRow(c), request, type: requestTypeOf(c.request), student,
+        // Canonical dues snapshot for the officer (legacy arrays / missing
+        // pre-migration values are upgraded on read — see src/dues.js).
+        dues: normalizeDues(c.dues, { rollNo: student?.rollNo, dept: mine, checkedAt: request.createdAt }),
         // Cancelled files stay visible (read-only history) but never actionable
         requestCancelled: !!request.cancelledAt,
         cancellationReason: request.cancellationReason,
@@ -188,7 +193,9 @@ export async function createRequest(student, typeObj) {
     request_id: req.id,      // real generated ID — satisfies NOT NULL
     department_id: d,        // FINANCE | LIBRARY | HOSTEL | SPORTS | PHYSICS_LAB | CHEMISTRY_LAB | DEAN | AO | DIRECTOR
     status: "PENDING",
-    dues: (student.dues && student.dues[d]) || null,
+    // Per-request department dues snapshot — server-generated, frozen onto the
+    // clearance so what the officer reviews stays auditable with this request.
+    dues: computeDues({ rollNo: student.rollNo, dept: d, checkedAt: req.createdAt }),
   }));
   // compatWrite handles the ARRAY correctly (no object-spread corruption)
   must(await compatWrite("clearances.insert", (r) => sb.from("clearances").insert(r), inserts));
@@ -199,34 +206,52 @@ export async function createRequest(student, typeObj) {
   return req;
 }
 
-export async function decide(clearanceId, approve, remarks, staff) {
+export async function decide(clearanceId, approve, remarks, staff, duesAcknowledged = false) {
   const clearance = await findClearanceById(clearanceId);
   const req = await findRequestById(clearance.requestId);
   // Cancelled/completed files are frozen — no approval operation may land on them.
   if (req.cancelledAt) throw new Error("This request was cancelled by the student — approvals are closed.");
   if (req.completedAt || req.certificateCode) throw new Error("This request is already completed.");
   const student = await findUserById(req.studentId);
+  const deptName = deptById(clearance.dept).name;
+
+  // ── Dues gate (server-side): the snapshot stored on this clearance decides.
+  // An officer may never silently approve a file with outstanding dues — the
+  // only path is an EXPLICIT acknowledgement (duesAcknowledged=true), which we
+  // record on the snapshot as a waiver so the decision remains auditable.
+  const duesInfo = normalizeDues(clearance.dues, { rollNo: student.rollNo, dept: clearance.dept, checkedAt: req.createdAt });
+  const waivedAt = new Date().toISOString();
+  if (approve && duesInfo.total > 0 && !duesAcknowledged)
+    throw new Error(`Outstanding dues of ${inr(duesInfo.total)} on record with ${deptName} — approval is blocked. Confirm settlement (explicit acknowledgement) or reject with a comment.`);
+
   const prevStatus = clearance.status;
-  const signedAt = new Date().toISOString();
-  const signatureHash = approve ? shortSign(`${student.rollNo}|${clearance.dept}|${signedAt}`) : null;
-  // Atomic guard: the flip succeeds ONLY while the clearance is still PENDING
-  const decided = must(await sb.from("clearances").update({
+  const signedAt2 = new Date().toISOString();
+  const signatureHash = approve ? shortSign(`${student.rollNo}|${clearance.dept}|${signedAt2}`) : null;
+  // Atomic guard: the flip succeeds ONLY while the clearance is still PENDING.
+  // compatWrite keeps this working on databases that haven't run
+  // migration-dues.sql yet (the dues key is stripped and retried).
+  const decided = must(await compatWrite("clearances.decide", (r) => sb.from("clearances").update(r).eq("id", clearanceId).eq("status", "PENDING").select().maybeSingle(), {
     status: approve ? "APPROVED" : "REJECTED",
-    remarks: remarks || (approve ? "No dues found." : ""),
+    remarks: remarks || (approve
+      ? (duesInfo.total > 0 ? `Dues of ${inr(duesInfo.total)} verified as settled — waived on record.` : "No dues found.")
+      : ""),
     approved_by: staff.name,
-    signed_at: signedAt,
+    signed_at: signedAt2,
     signature_hash: signatureHash,
-  }).eq("id", clearanceId).eq("status", "PENDING").select().maybeSingle());
+    dues: approve && duesInfo.total > 0
+      ? { ...duesInfo, waived: { by: staff.name, at: waivedAt, total: duesInfo.total } }
+      : duesInfo, // persist the exact snapshot that was reviewed
+  }));
   if (!decided) throw new Error("This clearance is no longer actionable (already decided or request cancelled).");
 
-  const deptName = deptById(clearance.dept).name;
   const newStatus = approve ? "CLEARED" : "REJECTED";
   await notify(student.id, approve
     ? `${deptName} cleared your request. Sign-off ${signatureHash}`
     : `${deptName} returned your request: “${remarks}”. Resolve the due and re-apply.`,
     approve ? "success" : "danger");
   await audit(staff.name, approve ? "CLEARANCE_CLEARED" : "CLEARANCE_REJECTED",
-    `${deptName} · ${prevStatus} → ${newStatus} · ${student.name} (${student.rollNo}) — ${remarks || "No dues found."}`);
+    `${deptName} · ${prevStatus} → ${newStatus} · ${student.name} (${student.rollNo}) — ${remarks || (duesInfo.total > 0 ? "Dues verified as settled — waived on record." : "No dues found.")}` +
+    (approve && duesInfo.total > 0 ? ` · dues ${inr(duesInfo.total)} acknowledged (waived by officer)` : ""));
 
   // Re-read the request right before minting — a cancellation landing
   // mid-approval must suppress certificate generation entirely.
@@ -238,13 +263,90 @@ export async function decide(clearanceId, approve, remarks, staff) {
     await audit("System", "CERTIFICATE_ISSUED", `Certificate ${code} issued to ${student.name}`);
   }
 }
+// ─── Student dues dashboard ────────────────────────────────────────────────
+export async function getStudentDues(studentId, dept) {
+  const mine = normDept(dept);
 
+  const rows = must(await sb
+    .from("clearances")
+    .select(`
+      *,
+      request:clearance_requests!clearances_request_id_fkey(
+        id,
+        student_id,
+        created_at,
+        cancelled_at
+      )
+    `)
+    .eq("department_id", mine));
+
+  const studentRows = rows.filter(
+    (c) => c.request?.student_id === studentId
+  );
+  if (!studentRows.length) {
+    // No clearance rows found for this student+dept — fall back to any stored
+    // per-profile dues snapshot (seeded) or compute a stable fixture.
+    const prof = must(await sb.from("profiles").select("roll_no,dues").eq("id", studentId).maybeSingle());
+    if (prof && prof.dues) {
+      const raw = prof.dues && prof.dues[mine];
+      if (raw) {
+        // If raw is a v2 snapshot or an array of legacy lines, normalize it.
+        if (raw.v === 2) {
+          return { dues: raw, clearance: null };
+        }
+        if (Array.isArray(raw)) {
+          return { dues: normalizeDues(raw, { rollNo: prof.roll_no || null, dept: mine, checkedAt: raw.checkedAt || new Date().toISOString() }), clearance: null };
+        }
+        // If it's an object with `lines`, convert to a v2 snapshot.
+        if (raw.lines) {
+          const total = (raw.lines || []).reduce((s, x) => s + (Number(x.amount || 0)), 0);
+          const snap = { v: 2, status: total > 0 ? "DUES_FOUND" : "NO_DUES", total, checkedAt: raw.checkedAt || new Date().toISOString(), lines: raw.lines, books: raw.books || undefined };
+          return { dues: snap, clearance: null };
+        }
+      }
+    }
+    return {
+      dues: normalizeDues(null, {
+        rollNo: prof?.roll_no || null,
+        dept: mine,
+        checkedAt: new Date().toISOString(),
+      }),
+      clearance: null,
+    };
+  }
+
+  // Use the most recent request for this department.
+  const latest = studentRows
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.request?.created_at || 0) -
+        new Date(a.request?.created_at || 0)
+    )[0];
+
+  const clearance = clrRow(latest);
+
+  return {
+    dues: normalizeDues(latest.dues, {
+      rollNo: null,
+      dept: mine,
+      checkedAt: latest.request?.created_at || new Date().toISOString(),
+    }),
+    clearance,
+  };
+}
 export async function reapply(clearanceId, student) {
   const clearance = await findClearanceById(clearanceId);
   const req = await findRequestById(clearance.requestId);
   if (req.cancelledAt) throw new Error("This request was cancelled — re-application is closed.");
   if (req.completedAt) throw new Error("This request is already completed.");
-  must(await sb.from("clearances").update({ status: "PENDING", remarks: null, approved_by: null, signed_at: null, signature_hash: null, dues: null }).eq("id", clearanceId));
+  // Re-check dues server-side on every re-application — never trust that the
+  // file the officer last saw is still current. compatWrite stays compatible
+  // with databases missing the dues column.
+  must(await compatWrite("clearances.reapply", (r) => sb.from("clearances").update(r).eq("id", clearanceId), {
+    status: "PENDING", remarks: null, approved_by: null, signed_at: null, signature_hash: null,
+    dues: computeDues({ rollNo: student.rollNo, dept: clearance.dept, checkedAt: new Date().toISOString() }),
+  }));
   const deptName = deptById(clearance.dept).name;
   await notify(student.id, `Re-application sent to ${deptName}.`);
   await audit(student.name, "CLEARANCE_REAPPLIED", deptName);
@@ -257,6 +359,39 @@ export async function notificationsFor(userId) {
 }
 export async function markNotificationsRead(userId) {
   must(await sb.from("notifications").update({ is_read: true }).eq("user_id", userId));
+}
+
+// ─── Account maintenance ────────────────────────────────────────────────────
+/** Self-service student registration (Login page → Register tab). */
+export async function registerStudent({ name, email, password, rollNo, phone }) {
+  email = String(email || "").trim().toLowerCase();
+  const dup = must(await sb.from("profiles").select("id").eq("email", email).maybeSingle());
+  if (dup) throw new Error("An account with this email already exists");
+  const salt = crypto.randomBytes(8).toString("hex");
+  // compatWrite drops `phone` if the schema predates migration-student-registration.sql
+  const res = await compatWrite("profiles.register", (r) => sb.from("profiles").insert(r).select().single(), {
+    name: String(name).trim(), email, role: "STUDENT", dept: null,
+    roll_no: String(rollNo).trim().toUpperCase(), phone: phone || null,
+    salt, password_hash: hashPassword(password, salt), disabled: false,
+  });
+  const row = must(res);
+  await safeAux("welcome notification", () =>
+    notify(row.id, "Welcome to ClearVault. Raise your first clearance request from the dashboard.", "info"));
+  await safeAux("audit", () => audit(row.name, "ACCOUNT_REGISTERED", `Student self-registration (${row.roll_no})`));
+  return publicUser(row);
+}
+
+/** Persist a (re-)hashed password — used when a legacy-format hash is verified
+ *  once and we upgrade the row to the canonical scrypt format. */
+export async function setUserPassword(userId, salt, passwordHash) {
+  const row = must(await sb
+    .from("profiles")
+    .update({ salt, password_hash: passwordHash })
+    .eq("id", userId)
+    .select("id")
+    .maybeSingle());
+  if (!row) throw new Error("User not found");
+  return { ok: true };
 }
 
 /**

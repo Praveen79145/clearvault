@@ -75,3 +75,17 @@ Reset demo data: `rm backend/data/db.json` and restart the API (it reseeds).
 - Swap `backend/src/store.js` for Postgres (Supabase/Neon) — table shapes are already 1:1
 - Email hooks: call your mailer from `notify()` in `store.js`
 - Deploy: frontend static build on any CDN; backend on any Node host; set `SIGNING_SECRET`
+## Razorpay payment setup
+
+To enable real payments, add these server-only values to `backend/.env`:
+
+```env
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=...
+```
+
+The checkout key ID is returned by the authenticated backend only when an order
+is created; the secret is never sent to the browser. If a Vercel frontend
+configuration requires the public key for deployment metadata, use only
+`VITE_RAZORPAY_KEY_ID=rzp_test_...`; never set `VITE_RAZORPAY_KEY_SECRET`.
+Run the updated `backend/supabase/schema.sql` before using payments with Supabase.

@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 import { shortSign, uid, hashPassword } from "./sign.js";
 import { DEPTS, deptById, normDept } from "./departments.js";
 import { REQUEST_TYPES, requestTypeOf, requiredDeptsForRequest } from "./requestTypes.js";
+import { computeDues, normalizeDues, inr } from "./dues.js";
 
 export { DEPTS };
 
@@ -35,13 +36,8 @@ function seed() {
     // Students
     mk("Ananya Verma", "ananya@campus.edu", "student123", "STUDENT", null, "CS22B1047"),
     mk("Rohan Mehta", "rohan@campus.edu", "student123", "STUDENT", null, "EC22B0913"),
-    mk("Karan Patel", "karan@campus.edu", "student123", "STUDENT", null, "ME21B0755",
-      { dues: {
-        FINANCE: [{ label: "Semester 6 tuition instalment", amount: 2500 }],
-        LIBRARY: [{ label: "Overdue: 'Signals & Systems' — 18 days", amount: 120 }],
-      } }),
-    mk("Zoya Khan", "zoya@campus.edu", "student123", "STUDENT", null, "BT23B0621",
-      { dues: { HOSTEL: [{ label: "Mess bill — July", amount: 1800 }] } }),
+    mk("Karan Patel", "karan@campus.edu", "student123", "STUDENT", null, "ME21B0755"),
+    mk("Zoya Khan", "zoya@campus.edu", "student123", "STUDENT", null, "BT23B0621"),
     // Officers (one account per office)
     mk("P. Ramesh", "finance@campus.edu", "staff123", "STAFF", "FINANCE"),
     mk("Meera Krishnan", "library@campus.edu", "staff123", "STAFF", "LIBRARY"),
@@ -62,7 +58,7 @@ function seed() {
   const karan = users[2];
   const byDept = Object.fromEntries(users.filter((u) => u.role === "STAFF").map((u) => [normDept(u.dept), u]));
 
-  const db = { users, requests: [], clearances: [], notifications: [], audit: [] };
+  const db = { users, requests: [], clearances: [], notifications: [], audit: [], payments: [] };
   const pushAudit = (actorName, action, detail, at) =>
     db.audit.push({ id: uid("aud"), actorName, action, detail, createdAt: at || new Date().toISOString() });
 
@@ -71,7 +67,8 @@ function seed() {
   db.requests.push(r1);
   ALL_OFFICES.forEach((d, i) => {
     const at = daysAgo(2.6 - i * 0.05);
-    db.clearances.push(signedApproval(r1.id, d, rohan.rollNo, byDept[d].name, at, "Verified — no dues."));
+    db.clearances.push({ ...signedApproval(r1.id, d, rohan.rollNo, byDept[d].name, at, "Verified — no dues."),
+      dues: computeDues({ rollNo: rohan.rollNo, dept: d, checkedAt: at }) });
   });
   pushAudit("Rohan Mehta", "REQUEST_CREATED", "Final Year / Graduation Clearance", daysAgo(4));
   pushAudit("System", "CERTIFICATE_ISSUED", "Certificate CV-26-R4J8KX issued to Rohan Mehta", daysAgo(2));
@@ -82,9 +79,13 @@ function seed() {
   for (const d of ALL_OFFICES) {
     if (["FINANCE", "LIBRARY", "SPORTS"].includes(d)) {
       const at = hoursAgo(12);
-      db.clearances.push(signedApproval(r2.id, d, karan.rollNo, byDept[d].name, at, "Cleared."));
+      db.clearances.push({ ...signedApproval(r2.id, d, karan.rollNo, byDept[d].name, at, "Cleared."),
+        dues: computeDues({ rollNo: karan.rollNo, dept: d, checkedAt: at }) });
     } else {
-      db.clearances.push({ id: uid("clr"), requestId: r2.id, dept: d, status: "PENDING", dues: r2 && karan.dues ? (karan.dues[d] || null) : null });
+      // Pending steps keep the dues snapshot the officer will review —
+      // Karan's HOSTEL and PHYSICS_LAB records intentionally show DUES.
+      db.clearances.push({ id: uid("clr"), requestId: r2.id, dept: d, status: "PENDING",
+        dues: computeDues({ rollNo: karan.rollNo, dept: d, checkedAt: r2.createdAt }) });
     }
   }
   pushAudit("Karan Patel", "REQUEST_CREATED", "Final Year / Graduation Clearance", hoursAgo(20));
@@ -96,12 +97,48 @@ function seed() {
     cancellationReason: "Submitted by mistake — selected the wrong semester while filing.",
   };
   db.requests.push(r3);
-  db.clearances.push({ id: uid("clr"), requestId: r3.id, dept: "HOSTEL", status: "PENDING" }); // frozen, never actionable
+  db.clearances.push({ id: uid("clr"), requestId: r3.id, dept: "HOSTEL", status: "PENDING",
+    dues: computeDues({ rollNo: users[3].rollNo, dept: "HOSTEL", checkedAt: r3.createdAt }) }); // frozen, never actionable
   pushAudit("Zoya Khan", "REQUEST_CANCELLED",
     "Hostel Vacating Clearance — reason: Submitted by mistake — selected the wrong semester while filing.", daysAgo(1));
 
   db.notifications.push({ id: uid("ntf"), userId: rohan.id, type: "success", isRead: false, message: "Graduation Clearance fully approved — certificate CV-26-R4J8KX is ready.", createdAt: daysAgo(2) });
   return db;
+}
+
+// ── Demo payment helpers (JSON store) ─────────────────────────────────────
+export async function createPaymentRecord({ studentId, dept, amount, duesRecordId, razorpayOrderId }) {
+  const p = { id: uid("pay"), studentId, dept, amount, duesRecordId, razorpayOrderId, paymentStatus: "CREATED", createdAt: new Date().toISOString() };
+  db.payments.push(p);
+  save();
+  return p;
+}
+
+export async function findPaymentByOrder(orderId) {
+  return db.payments.find((p) => p.razorpayOrderId === orderId) || null;
+}
+
+export async function markPaymentPaid({ razorpayOrderId, razorpayPaymentId }) {
+  const p = db.payments.find((x) => x.razorpayOrderId === razorpayOrderId);
+  if (!p) throw new Error("Payment record not found");
+  if (p.paymentStatus === "PAID") return p;
+  p.paymentStatus = "PAID";
+  p.razorpayPaymentId = razorpayPaymentId;
+  p.paidAt = new Date().toISOString();
+
+  // If this payment is tied to a clearance row, mark that clearance as cleared for demo purposes.
+  if (p.duesRecordId) {
+    const clr = db.clearances.find((c) => c.id === p.duesRecordId);
+    if (clr) {
+      // Clear the dues snapshot so officers/students see NO_DUES afterwards.
+      clr.dues = { v: 2, status: "NO_DUES", total: 0, checkedAt: new Date().toISOString(), lines: CLEAN_LINES[clr.dept] ? CLEAN_LINES[clr.dept]() : [] };
+      // If library, also clear any demo books attached to this student's clearance
+      if (clr.dept === "LIBRARY") clr.books = [];
+    }
+  }
+
+  save();
+  return p;
 }
 
 function load() {
@@ -174,6 +211,28 @@ export async function findRequestById(id) {
 export async function findClearanceById(id) {
   return db.clearances.find((c) => c.id === id) || null;
 }
+
+export async function getStudentDues(studentId, dept) {
+  const student = db.users.find((u) => u.id === studentId);
+  const roll = student?.rollNo || null;
+  // Use the most recent request if any — the stored clearance snapshot is authoritative
+  const requests = db.requests.filter((r) => r.studentId === studentId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const req = requests[0] || null;
+  let clearance = null;
+  if (req) {
+    clearance = db.clearances.find((c) => c.requestId === req.id && normDept(c.dept) === normDept(dept)) || null;
+  }
+  if (clearance) {
+    const dues = normalizeDues(clearance.dues, { rollNo: roll, dept: normDept(dept), checkedAt: clearance.dues?.checkedAt || req?.createdAt });
+    // If this clearance had books stored (demo), include them on the returned record
+    const out = { dues, clearance };
+    if (clearance.books) out.books = clearance.books;
+    return out;
+  }
+  // No active clearance — compute a stable per-student fixture
+  const dues = computeDues({ rollNo: roll, dept: normDept(dept) });
+  return { dues, clearance: null };
+}
 export async function getActiveRequest(studentId) {
   return db.requests.filter((r) => r.studentId === studentId).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] || null;
 }
@@ -219,10 +278,14 @@ export async function deptQueue(dept) {
     .filter((c) => normDept(c.dept) === mine)
     .map((c) => {
       const request = db.requests.find((r) => r.id === c.requestId);
+      const student = db.users.find((u) => u.id === request.studentId);
       return {
         ...c, dept: normDept(c.dept), request,
+        // The officer always reviews a CANONICAL dues snapshot (legacy arrays
+        // and pre-migration rows are upgraded on read — see src/dues.js).
+        dues: normalizeDues(c.dues, { rollNo: student?.rollNo, dept: mine, checkedAt: request.createdAt }),
         type: requestTypeOf(request),
-        student: publicUser(db.users.find((u) => u.id === request.studentId)),
+        student: publicUser(student),
         // Cancelled files stay visible (read-only history) but never actionable
         requestCancelled: !!request.cancelledAt,
         cancellationReason: request.cancellationReason || null,
@@ -240,7 +303,9 @@ export async function createRequest(student, typeObj) {
   for (const d of typeObj.requires) {
     db.clearances.push({
       id: uid("clr"), requestId: req.id, dept: d, status: "PENDING",
-      dues: (student.dues && student.dues[d]) || null,
+      // Per-request department dues snapshot — generated server-side and
+      // frozen onto the clearance so the officer's review stays auditable.
+      dues: computeDues({ rollNo: student.rollNo, dept: d, checkedAt: req.createdAt }),
     });
   }
   notify(student.id, `${typeObj.title} filed — routed to ${typeObj.requires.length} ${typeObj.requires.length === 1 ? "office" : "offices"}.`);
@@ -249,7 +314,7 @@ export async function createRequest(student, typeObj) {
   return req;
 }
 
-export async function decide(clearanceId, approve, remarks, staff) {
+export async function decide(clearanceId, approve, remarks, staff, duesAcknowledged = false) {
   const clearance = db.clearances.find((c) => c.id === clearanceId);
   const req = db.requests.find((r) => r.id === clearance.requestId);
   // Cancelled/completed files are frozen — no approval operation may land on them.
@@ -257,20 +322,37 @@ export async function decide(clearanceId, approve, remarks, staff) {
   if (req.completedAt || req.certificateCode) throw new Error("This request is already completed.");
   if (clearance.status !== "PENDING") throw new Error("This clearance has already been decided.");
   const student = db.users.find((u) => u.id === req.studentId);
+  const deptName = deptById(clearance.dept).name;
+
+  // ── Dues gate (server-side): the snapshot stored on this clearance decides.
+  // An officer may never silently approve a file with outstanding dues — the
+  // only path is an EXPLICIT acknowledgement (duesAcknowledged=true), which we
+  // record on the snapshot as a waiver so the decision remains auditable.
+  const duesInfo = normalizeDues(clearance.dues, { rollNo: student.rollNo, dept: clearance.dept, checkedAt: req.createdAt });
+  if (approve && duesInfo.total > 0) {
+    if (!duesAcknowledged)
+      throw new Error(`Outstanding dues of ${inr(duesInfo.total)} on record with ${deptName} — approval is blocked. Confirm settlement (explicit acknowledgement) or reject with a comment.`);
+    clearance.dues = { ...duesInfo, waived: { by: staff.name, at: new Date().toISOString(), total: duesInfo.total } };
+  } else {
+    clearance.dues = duesInfo; // persist the exact snapshot that was reviewed
+  }
+
   const prevStatus = clearance.status;
   clearance.status = approve ? "APPROVED" : "REJECTED";
-  clearance.remarks = remarks || (approve ? "No dues found." : "");
+  clearance.remarks = remarks || (approve
+    ? (duesInfo.total > 0 ? `Dues of ${inr(duesInfo.total)} verified as settled — waived on record.` : "No dues found.")
+    : "");
   clearance.approvedBy = staff.name;
   clearance.signedAt = new Date().toISOString();
   clearance.signatureHash = approve ? shortSign(`${student.rollNo}|${clearance.dept}|${clearance.signedAt}`) : undefined;
-  const deptName = deptById(clearance.dept).name;
   const newStatus = approve ? "CLEARED" : "REJECTED";
   notify(student.id, approve
     ? `${deptName} cleared your request. Sign-off ${clearance.signatureHash}`
     : `${deptName} returned your request: “${remarks}”. Resolve the due and re-apply.`,
     approve ? "success" : "danger");
   audit(staff.name, approve ? "CLEARANCE_CLEARED" : "CLEARANCE_REJECTED",
-    `${deptName} · ${prevStatus} → ${newStatus} · ${student.name} (${student.rollNo}) — ${clearance.remarks}`);
+    `${deptName} · ${prevStatus} → ${newStatus} · ${student.name} (${student.rollNo}) — ${clearance.remarks}` +
+    (approve && duesInfo.total > 0 ? ` · dues ${inr(duesInfo.total)} acknowledged (waived by officer)` : ""));
   if ((await overallStatus(req.id)) === "COMPLETED" && !req.completedAt) {
     req.completedAt = new Date().toISOString();
     req.certificateCode = "CV-26-" + crypto.randomBytes(3).toString("hex").toUpperCase();
@@ -287,7 +369,9 @@ export async function reapply(clearanceId, student) {
   if (req.completedAt) throw new Error("This request is already completed.");
   clearance.status = "PENDING";
   clearance.remarks = undefined;
-  clearance.dues = undefined;
+  // Re-check dues server-side on every re-application — never trust that the
+  // file the officer last saw is still current.
+  clearance.dues = computeDues({ rollNo: student.rollNo, dept: clearance.dept, checkedAt: new Date().toISOString() });
   clearance.approvedBy = undefined;
   clearance.signedAt = undefined;
   clearance.signatureHash = undefined;
@@ -317,6 +401,35 @@ export async function cancelRequest(requestId, student, reason) {
     `${req.purpose}${reason ? ` — reason: ${reason}` : " — no reason given"}`);
   save();
   return req;
+}
+
+// ─── Account maintenance ────────────────────────────────────────────────────
+/** Self-service student registration (Login page → Register tab). */
+export async function registerStudent({ name, email, password, rollNo, phone }) {
+  email = String(email || "").trim().toLowerCase();
+  if (db.users.find((u) => u.email === email)) throw new Error("An account with this email already exists");
+  const salt = crypto.randomBytes(8).toString("hex");
+  const u = {
+    id: uid("usr"), name: String(name).trim(), email, role: "STUDENT", dept: null,
+    rollNo: String(rollNo).trim().toUpperCase(), phone: phone || null,
+    salt, passwordHash: hashPassword(password, salt),
+  };
+  db.users.push(u);
+  notify(u.id, "Welcome to ClearVault. Raise your first clearance request from the dashboard.", "info");
+  audit(u.name, "ACCOUNT_REGISTERED", `Student self-registration (${u.rollNo})`);
+  save();
+  return publicUser(u);
+}
+
+/** Persist a (re-)hashed password — used when a legacy-format hash is verified
+ *  once and we upgrade the row to the canonical scrypt format. */
+export async function setUserPassword(userId, salt, passwordHash) {
+  const u = db.users.find((x) => x.id === userId);
+  if (!u) throw new Error("User not found");
+  u.salt = salt;
+  u.passwordHash = passwordHash;
+  save();
+  return { ok: true };
 }
 
 export async function notificationsFor(userId) {

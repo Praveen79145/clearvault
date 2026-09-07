@@ -59,6 +59,22 @@ create table if not exists clearances (
 create index if not exists idx_clearances_request on clearances (request_id);
 create index if not exists idx_clearances_dept    on clearances (department_id, status);
 
+-- ── Razorpay payment ledger ──────────────────────────────────────────────
+create table if not exists payments (
+  id                  uuid primary key default gen_random_uuid(),
+  student_id          uuid not null references profiles(id) on delete cascade,
+  department_id       text not null references departments(id),
+  dues_record_id      text not null,
+  amount              numeric(12,2) not null check (amount > 0),
+  currency            text not null default 'INR',
+  razorpay_order_id   text not null unique,
+  razorpay_payment_id text unique,
+  payment_status      text not null default 'CREATED' check (payment_status in ('CREATED','PAID','FAILED','REFUNDED')),
+  created_at          timestamptz not null default now(),
+  paid_at             timestamptz
+);
+create index if not exists idx_payments_student on payments(student_id, created_at desc);
+
 -- ── Notifications ─────────────────────────────────────────────────────────
 create table if not exists notifications (
   id         uuid primary key default gen_random_uuid(),
@@ -89,6 +105,7 @@ alter table clearance_requests  enable row level security;
 alter table clearances          enable row level security;
 alter table notifications       enable row level security;
 alter table audit_log           enable row level security;
+alter table payments            enable row level security;
 
 -- If you ran an older version of this file, add the Google columns to the
 -- EXISTING table instead (safe to run repeatedly):

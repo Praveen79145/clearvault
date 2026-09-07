@@ -15,6 +15,7 @@ console.log(`[store] data layer → ${useSupabase ? "SUPABASE (PostgreSQL)" : "l
 export const DEPTS = impl.DEPTS;
 export const findUserByEmail = impl.findUserByEmail;
 export const findUserById = impl.findUserById;
+export const setUserPassword = impl.setUserPassword;
 export const findRequestById = impl.findRequestById;
 export const findClearanceById = impl.findClearanceById;
 export const getActiveRequest = impl.getActiveRequest;
@@ -35,3 +36,7 @@ export const upsertGoogleStudent = impl.upsertGoogleStudent;
 export const listOfficers = impl.listOfficers;
 export const createOfficer = impl.createOfficer;
 export const setOfficerDisabled = impl.setOfficerDisabled;
+export const getStudentDues = impl.getStudentDues;
+export const createPaymentRecord = impl.createPaymentRecord;
+export const findPaymentByOrder = impl.findPaymentByOrder;
+export const markPaymentPaid = impl.markPaymentPaid;
