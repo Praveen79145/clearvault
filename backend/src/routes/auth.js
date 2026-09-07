@@ -3,6 +3,12 @@ import { Router } from "express";
 import {
   findUserByEmail,
   registerStudent,
+  findUserById,
+  setUserPassword,
+  updateUserPassword,
+  createPasswordReset,
+  findPasswordResetByHash,
+  invalidatePasswordReset,
 } from "../store.js";
 
 import { hashPassword } from "../sign.js";
@@ -13,6 +19,7 @@ import {
   homeFor,
   userFromRequest,
 } from "../auth.js";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -236,6 +243,65 @@ router.get("/me", async (req, res) => {
     return res.status(500).json({
       error: "Unable to fetch user session.",
     });
+  }
+});
+
+// ─────────────────────────────────────────────
+// FORGOT PASSWORD
+// ─────────────────────────────────────────────
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    const normalized = String(email || "").trim().toLowerCase();
+
+    if (!normalized) return res.status(400).json({ error: "Email is required." });
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalized)) return res.status(400).json({ error: "Invalid email format." });
+
+    const user = await findUserByEmail(normalized);
+
+    if (!user) {
+      return res.status(404).json({ error: "No account was found with this college email." });
+    }
+
+    return res.json({ ok: true, message: "Email verified. You may now reset your password." });
+  } catch (err) {
+    console.error("[auth/forgot-password]", err);
+    return res.status(500).json({ error: "Unable to process password reset request." });
+  }
+});
+
+
+// ─────────────────────────────────────────────
+// RESET PASSWORD
+// ─────────────────────────────────────────────
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, password, confirmPassword } = req.body || {};
+
+    if (!email) return res.status(400).json({ error: "Email is required." });
+    if (!password) return res.status(400).json({ error: "Password is required." });
+    if (String(password).length < 8) return res.status(400).json({ error: "Password must contain at least 8 characters." });
+    if (password !== confirmPassword) return res.status(400).json({ error: "Passwords do not match." });
+
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+
+    const user = await findUserByEmail(normalizedEmail);
+    if (!user) {
+      return res.status(404).json({ error: "No account was found with this college email." });
+    }
+
+    const salt = crypto.randomBytes(8).toString("hex");
+    const newHash = hashPassword(String(password), salt);
+    await updateUserPassword(normalizedEmail, salt, newHash);
+
+    return res.json({ ok: true, message: "Password updated successfully." });
+  } catch (err) {
+    console.error("[auth/reset-password]", err);
+    const message = String(err?.message || "");
+    if (/not found/i.test(message)) {
+      return res.status(404).json({ error: "No account was found with this college email." });
+    }
+    return res.status(500).json({ error: "Unable to update password. Please try again." });
   }
 });
 

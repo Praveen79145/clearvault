@@ -58,7 +58,7 @@ function seed() {
   const karan = users[2];
   const byDept = Object.fromEntries(users.filter((u) => u.role === "STAFF").map((u) => [normDept(u.dept), u]));
 
-  const db = { users, requests: [], clearances: [], notifications: [], audit: [], payments: [] };
+  const db = { users, requests: [], clearances: [], notifications: [], audit: [], payments: [], passwordResets: [] };
   const pushAudit = (actorName, action, detail, at) =>
     db.audit.push({ id: uid("aud"), actorName, action, detail, createdAt: at || new Date().toISOString() });
 
@@ -435,6 +435,17 @@ export async function registerStudent({ name, email, password, rollNo, phone }) 
   return publicUser(u);
 }
 
+/** Update password for an existing user by email (in-app reset, no tokens). */
+export async function updateUserPassword(email, salt, passwordHash) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const u = db.users.find((x) => String(x.email || "").toLowerCase() === normalizedEmail);
+  if (!u) throw new Error("User not found");
+  u.salt = salt;
+  u.passwordHash = passwordHash;
+  save();
+  return { ok: true };
+}
+
 /** Persist a (re-)hashed password — used when a legacy-format hash is verified
  *  once and we upgrade the row to the canonical scrypt format. */
 export async function setUserPassword(userId, salt, passwordHash) {
@@ -442,6 +453,26 @@ export async function setUserPassword(userId, salt, passwordHash) {
   if (!u) throw new Error("User not found");
   u.salt = salt;
   u.passwordHash = passwordHash;
+  save();
+  return { ok: true };
+}
+
+// ── Password reset tokens (JSON fallback) ─────────────────────────────────
+export async function createPasswordReset(userId, tokenHash, expiresAt) {
+  const row = { id: uid("prt"), userId, tokenHash, expiresAt, used: false, createdAt: new Date().toISOString() };
+  db.passwordResets.push(row);
+  save();
+  return { id: row.id, createdAt: row.createdAt };
+}
+
+export async function findPasswordResetByHash(tokenHash) {
+  return db.passwordResets.find((p) => p.tokenHash === tokenHash) || null;
+}
+
+export async function invalidatePasswordReset(id) {
+  const p = db.passwordResets.find((x) => x.id === id);
+  if (!p || p.used) throw new Error("Reset token already used or not found");
+  p.used = true;
   save();
   return { ok: true };
 }

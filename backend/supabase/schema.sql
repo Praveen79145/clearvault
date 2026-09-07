@@ -117,3 +117,14 @@ alter table clearances add column if not exists dues     jsonb;
 alter table clearance_requests add column if not exists cancelled_at        timestamptz;
 alter table clearance_requests add column if not exists cancelled_by        text;
 alter table clearance_requests add column if not exists cancellation_reason text;
+
+-- ── Password reset tokens (server-only table) ─────────────────────────────
+create table if not exists password_resets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  token_hash text not null unique,
+  expires_at timestamptz not null,
+  used boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists idx_password_resets_token on password_resets (token_hash);

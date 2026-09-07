@@ -17,7 +17,10 @@ const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_R
 });
 
 const must = ({ data, error }) => {
-  if (error) throw new Error(`[supabase] ${error.message}`);
+  if (error) {
+    console.error("[supabase] error details:", error);
+    throw new Error(`[supabase] ${error.message}`);
+  }
   return data;
 };
 
@@ -42,6 +45,7 @@ async function compatWrite(label, builder, input) {
   const isArray = Array.isArray(input);
   let payload = isArray ? input.map((r) => ({ ...r })) : { ...input };
   let res = await builder(payload);
+  if (res?.error) console.error(`[supabase] ${label} write error:`, res.error);
   let guard = 0;
   while (res?.error && guard++ < 5) {
     const m = res.error.message?.match(/column ['"]?([\w_]+)['"]? .*(does not exist|not found)/i) ||
@@ -463,6 +467,66 @@ export async function setUserPassword(userId, salt, passwordHash) {
     .maybeSingle());
   if (!row) throw new Error("User not found");
   return { ok: true };
+}
+
+/** Update password for an existing user by email (in-app reset, no tokens). */
+export async function updateUserPassword(email, salt, passwordHash) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const row = must(await sb
+    .from("profiles")
+    .update({ salt, password_hash: passwordHash })
+    .eq("email", normalizedEmail)
+    .select("id")
+    .maybeSingle());
+  if (!row) throw new Error("User not found");
+  return { ok: true };
+}
+
+// ── Password reset tokens (server-only table) ─────────────────────────────
+export async function createPasswordReset(userId, tokenHash, expiresAt) {
+  try {
+    const res = await compatWrite("password_resets.insert", (r) => sb.from("password_resets").insert(r).select().single(), {
+      user_id: userId,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+      used: false,
+    });
+    const row = must(res);
+    return { id: row.id, createdAt: row.created_at };
+  } catch (err) {
+    console.error("[store.supabase] createPasswordReset error:", err);
+    throw err;
+  }
+}
+
+export async function findPasswordResetByHash(tokenHash) {
+  try {
+    const res = await sb.from("password_resets").select("*").eq("token_hash", tokenHash).maybeSingle();
+    if (res?.error) {
+      console.error("[store.supabase] findPasswordResetByHash error:", res.error);
+      throw new Error(`[supabase] ${res.error.message}`);
+    }
+    if (!res?.data) return null;
+    return { id: res.data.id, userId: res.data.user_id, tokenHash: res.data.token_hash, expiresAt: res.data.expires_at, used: !!res.data.used, createdAt: res.data.created_at };
+  } catch (err) {
+    console.error("[store.supabase] findPasswordResetByHash failed:", err);
+    throw err;
+  }
+}
+
+export async function invalidatePasswordReset(id) {
+  try {
+    const res = await sb.from("password_resets").update({ used: true }).eq("id", id).eq("used", false).select().maybeSingle();
+    if (res?.error) {
+      console.error("[store.supabase] invalidatePasswordReset error:", res.error);
+      throw new Error(`[supabase] ${res.error.message}`);
+    }
+    if (!res?.data) throw new Error("Reset token already used or not found");
+    return { ok: true };
+  } catch (err) {
+    console.error("[store.supabase] invalidatePasswordReset failed:", err);
+    throw err;
+  }
 }
 
 /**

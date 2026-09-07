@@ -35,7 +35,11 @@ export const DEPTS = impl.DEPTS;
 export const findUserByEmail = impl.findUserByEmail;
 export const findUserById = impl.findUserById;
 export const setUserPassword = impl.setUserPassword;
+export const updateUserPassword = impl.updateUserPassword;
 export const registerStudent = impl.registerStudent;
+export const createPasswordReset = impl.createPasswordReset;
+export const findPasswordResetByHash = impl.findPasswordResetByHash;
+export const invalidatePasswordReset = impl.invalidatePasswordReset;
 
 // ─────────────────────────────────────────────
 // Requests
