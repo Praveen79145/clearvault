@@ -67,16 +67,16 @@ const HERO_FEATURES = [
 ];
 
 const DEMO_STUDENTS = [
-  ["Aarav Kumar · student", "r220101@rguktrkv.ac.in", "student123"],
-  ["Bhavana Reddy · student", "r220102@rguktrkv.ac.in", "student123"],
-  ["Chaitanya N · student", "r220103@rguktrkv.ac.in", "student123"],
-  ["Divya Shetty · student", "r220104@rguktrkv.ac.in", "student123"],
-  ["Eesha Patel · student", "r220105@rguktrkv.ac.in", "student123"],
-  ["Farhan Mohammed · student", "r220106@rguktrkv.ac.in", "student123"],
-  ["Gayatri Thampi · student", "r220107@rguktrkv.ac.in", "student123"],
-  ["Harish Varma · student", "r220108@rguktrkv.ac.in", "student123"],
-  ["Indra Kumar · student", "r220109@rguktrkv.ac.in", "student123"],
-  ["Jaya Lal · student", "r220110@rguktrkv.ac.in", "student123"],
+  ["B Praveen · student", "o220854@rguktrkv.ac.in", "student123"],
+  ["C Kiran · student", "r220007@rguktrkv.ac.in", "student123"],
+  ["M Mahesh · student", "r220921@rguktrkv.ac.in", "student123"],
+  ["Nikhil Rao · student", "r220112@rguktrkv.ac.in", "student123"],
+  ["Priya Sharma · student", "r220113@rguktrkv.ac.in", "student123"],
+  ["Rahul Gupta · student", "r220114@rguktrkv.ac.in", "student123"],
+  ["Sangeeta Rao · student", "r220115@rguktrkv.ac.in", "student123"],
+  ["Vikram Singh · student", "r220116@rguktrkv.ac.in", "student123"],
+  ["Anita Das · student", "r220117@rguktrkv.ac.in", "student123"],
+  ["(extra) Demo Student", "r220118@rguktrkv.ac.in", "student123"],
 ];
 
 const DEMO_OFFICERS = [

@@ -26,100 +26,41 @@ const mkUser = (name, email, pw, role, dept, rollNo, dues) => {
 
 // Ten RGUKT demo students (fictional). Password: student123
 const USERS = [
-  mkUser("Aarav Kumar", "r220101@rguktrkv.ac.in", "student123", "STUDENT", null, "R220101", {
-    meta: { phone: "+91-7700010101", campus: "rguktrkv" }
+  // Special three exact accounts
+  mkUser("B Praveen", "o220854@rguktrkv.ac.in", "student123", "STUDENT", null, "O220854", { meta: { campus: "rguktrkv" } }),
+  mkUser("C Kiran", "r220007@rguktrkv.ac.in", "student123", "STUDENT", null, "R220007", { meta: { campus: "rguktrkv" } }),
+  // M Mahesh: NO DUES across every department — supply explicit v2 snapshots with total 0
+  mkUser("M Mahesh", "r220921@rguktrkv.ac.in", "student123", "STUDENT", null, "R220921", {
+    dues: Object.fromEntries(["FINANCE","LIBRARY","HOSTEL","SPORTS","PHYSICS_LAB","CHEMISTRY_LAB","DEAN","AO","DIRECTOR"].map((d) => [d, { v: 2, status: "NO_DUES", total: 0, checkedAt: new Date().toISOString(), lines: [] } ])),
+    meta: { campus: "rguktrkv" }
   }),
-  mkUser("Bhavana Reddy", "r220102@rguktrkv.ac.in", "student123", "STUDENT", null, "R220102", {
-    LIBRARY: {
-      v: 2,
-      lines: [
-        { label: "Books pending", detail: "1 title past due date", value: "1", amount: 400 },
-        { label: "Library fine", detail: "Overdue fine accrued", amount: 120 }
-      ],
-      books: [
-        { id: "LIB-2026-01001", name: "Computer Networks", issueDate: "2026-07-10", dueDate: "2026-07-24", amount: 400, status: "PENDING" }
-      ]
-    },
-    meta: { phone: "+91-7700010102", campus: "rguktrkv" }
+  // Seven additional realistic demo students with varied dues
+  mkUser("Nikhil Rao", "r220112@rguktrkv.ac.in", "student123", "STUDENT", null, "R220112", {
+    FINANCE: { v: 2, lines: [ { label: "Tuition fee", detail: "Semester instalment unpaid", amount: 15000 } ], total: 15000, status: "DUES_FOUND" },
+    meta: { phone: "+91-7700010112", campus: "rguktrkv" }
   }),
-  mkUser("Chaitanya N", "r220103@rguktrkv.ac.in", "student123", "STUDENT", null, "R220103", {
-    FINANCE: {
-      v: 2,
-      lines: [
-        { label: "Tuition fee", detail: "Semester instalment unpaid", amount: 50000 },
-        { label: "Scholarship due", detail: "No scholarship", amount: 0 }
-      ]
-    },
-    meta: { phone: "+91-7700010103", campus: "rguktrkv" }
+  mkUser("Priya Sharma", "r220113@rguktrkv.ac.in", "student123", "STUDENT", null, "R220113", {
+    LIBRARY: { v: 2, lines: [ { label: "Books pending", detail: "2 titles past due", value: "2", amount: 700 } ], books: [ { id: "LIB-2026-02001", name: "Algorithms", issueDate: "2026-06-01", dueDate: "2026-06-15", amount: 350, status: "PENDING" }, { id: "LIB-2026-02002", name: "Discrete Math", issueDate: "2026-06-03", dueDate: "2026-06-17", amount: 350, status: "PENDING" } ], total: 700, status: "DUES_FOUND" },
+    meta: { phone: "+91-7700010113", campus: "rguktrkv" }
   }),
-  mkUser("Divya Shetty", "r220104@rguktrkv.ac.in", "student123", "STUDENT", null, "R220104", {
-    HOSTEL: {
-      v: 2,
-      lines: [
-        { label: "Hostel dues", detail: "Room rent — July arrears", amount: 3000 },
-        { label: "Mess dues", detail: "Mess bill — July", amount: 2400 },
-        { label: "Paybill", detail: "No pending hostel paybill", amount: 0 }
-      ]
-    },
-    meta: { phone: "+91-7700010104", campus: "rguktrkv" }
+  mkUser("Rahul Gupta", "r220114@rguktrkv.ac.in", "student123", "STUDENT", null, "R220114", {
+    HOSTEL: { v: 2, lines: [ { label: "Hostel dues", detail: "Room rent — July", amount: 3000 } ], total: 3000, status: "DUES_FOUND" },
+    meta: { phone: "+91-7700010114", campus: "rguktrkv" }
   }),
-  mkUser("Eesha Patel", "r220105@rguktrkv.ac.in", "student123", "STUDENT", null, "R220105", {
-    FINANCE: {
-      v: 2,
-      lines: [
-        { label: "Tuition fee", detail: "Semester instalment unpaid", amount: 45000 },
-        { label: "Scholarship due", detail: "Partial scholarship", amount: 10000 }
-      ]
-    },
-    LIBRARY: {
-      v: 2,
-      lines: [
-        { label: "Books pending", detail: "1 title past due date", value: "1", amount: 350 },
-        { label: "Library fine", detail: "Overdue fine accrued", amount: 80 }
-      ],
-      books: [{ id: "LIB-2026-01111", name: "Data Structures", issueDate: "2026-06-10", dueDate: "2026-06-24", amount: 350, status: "PENDING" }]
-    },
-    SPORTS: {
-      v: 2,
-      lines: [
-        { label: "Kit / equipment issued", detail: "Team kit on issue", amount: 0 },
-        { label: "Equipment charges", detail: "Jersey replacement", amount: 900 }
-      ]
-    },
-    meta: { phone: "+91-7700010105", campus: "rguktrkv" }
+  mkUser("Sangeeta Rao", "r220115@rguktrkv.ac.in", "student123", "STUDENT", null, "R220115", {
+    SPORTS: { v: 2, lines: [ { label: "Equipment charges", detail: "Replacement racket", amount: 1200 } ], total: 1200, status: "DUES_FOUND" },
+    meta: { phone: "+91-7700010115", campus: "rguktrkv" }
   }),
-  mkUser("Farhan Mohammed", "r220106@rguktrkv.ac.in", "student123", "STUDENT", null, "R220106", {
-    HOSTEL: {
-      v: 2,
-      lines: [
-        { label: "Hostel dues", detail: "Room rent — June arrears", amount: 1800 },
-        { label: "Mess dues", detail: "Mess bill balance", amount: 1200 }
-      ]
-    },
-    LIBRARY: {
-      v: 2,
-      lines: [ { label: "Books pending", detail: "1 title past due date", value: "1", amount: 400 }, { label: "Library fine", detail: "Overdue fine", amount: 150 } ],
-      books: [{ id: "LIB-2026-01234", name: "Operating System Concepts", issueDate: "2026-07-01", dueDate: "2026-07-15", amount: 400, status: "PENDING" }]
-    },
-    meta: { phone: "+91-7700010106", campus: "rguktrkv" }
+  mkUser("Vikram Singh", "r220116@rguktrkv.ac.in", "student123", "STUDENT", null, "R220116", {
+    PHYSICS_LAB: { v: 2, lines: [ { label: "Equipment unreturned", detail: "Oscilloscope lead", amount: 600 } ], total: 600, status: "DUES_FOUND" },
+    meta: { phone: "+91-7700010116", campus: "rguktrkv" }
   }),
-  mkUser("Gayatri Thampi", "r220107@rguktrkv.ac.in", "student123", "STUDENT", null, "R220107", {
-    meta: { phone: "+91-7700010107", campus: "rguktrkv" }
+  mkUser("Anita Das", "r220117@rguktrkv.ac.in", "student123", "STUDENT", null, "R220117", {
+    CHEMISTRY_LAB: { v: 2, lines: [ { label: "Breakage charge", detail: "Cracked beaker", amount: 1200 } ], total: 1200, status: "DUES_FOUND" },
+    FINANCE: { v: 2, lines: [ { label: "Tuition fee", detail: "Partial instalment unpaid", amount: 5000 } ], total: 5000, status: "DUES_FOUND" },
+    meta: { phone: "+91-7700010117", campus: "rguktrkv" }
   }),
-  mkUser("Harish Varma", "r220108@rguktrkv.ac.in", "student123", "STUDENT", null, "R220108", {
-    FINANCE: { v: 2, lines: [ { label: "Tuition fee", detail: "Semester instalment unpaid", amount: 20000 }, { label: "Scholarship due", detail: "No scholarship", amount: 0 } ] },
-    HOSTEL: { v: 2, lines: [ { label: "Hostel dues", detail: "Room rent — July", amount: 2500 } ] },
-    SPORTS: { v: 2, lines: [ { label: "Equipment charges", detail: "Replacement shoes", amount: 1200 } ] }
-  , meta: { phone: "+91-7700010108", campus: "rguktrkv" } }),
-  mkUser("Indra Kumar", "r220109@rguktrkv.ac.in", "student123", "STUDENT", null, "R220109", {
-    LIBRARY: { v: 2, lines: [ { label: "Books pending", detail: "1 title past due date", value: "1", amount: 300 }, { label: "Library fine", detail: "Overdue fine", amount: 90 } ], books: [{ id: "LIB-2026-01321", name: "Modern Physics", issueDate: "2026-07-05", dueDate: "2026-07-19", amount: 300, status: "PENDING" }] },
-    PHYSICS_LAB: { v: 2, lines: [ { label: "Equipment unreturned", detail: "Oscilloscope lead not returned", amount: 600 } ] }
-  , meta: { phone: "+91-7700010109", campus: "rguktrkv" } }),
-  mkUser("Jaya Lal", "r220110@rguktrkv.ac.in", "student123", "STUDENT", null, "R220110", {
-    FINANCE: { v: 2, lines: [ { label: "Tuition fee", detail: "Semester instalment unpaid", amount: 32000 }, { label: "Scholarship due", detail: "Partial scholarship", amount: 5000 } ] },
-    CHEMISTRY_LAB: { v: 2, lines: [ { label: "Breakage / usage charges", detail: "Cracked 250 ml beaker", amount: 1200 } ] },
-    HOSTEL: { v: 2, lines: [ { label: "Mess dues", detail: "Mess bill balance", amount: 900 } ] }
-  , meta: { phone: "+91-7700010110", campus: "rguktrkv" } }),
+  // Officers (one account per office)
   mkUser("P. Ramesh", "finance@campus.edu", "staff123", "STAFF", "FINANCE"),
   mkUser("Meera Krishnan", "library@campus.edu", "staff123", "STAFF", "LIBRARY"),
   mkUser("Rajan Iyer", "hostel@campus.edu", "staff123", "STAFF", "HOSTEL"),
@@ -139,7 +80,11 @@ const ALL = (REQUEST_TYPES.find((t) => t.id === "tc-graduation") || { requires: 
 const idByEmail = {};
 let created = 0, repaired = 0, kept = 0;
 for (const u of USERS) {
-  const exists = must(await sb.from("profiles").select("id,salt,password_hash").eq("email", u.email).maybeSingle());
+  // Prefer matching by email; if absent, try matching by roll_no to avoid duplicates.
+  let exists = must(await sb.from("profiles").select("id,salt,password_hash,email,roll_no").eq("email", u.email).maybeSingle());
+  if (!exists && u.roll_no) {
+    exists = must(await sb.from("profiles").select("id,salt,password_hash,email,roll_no").eq("roll_no", u.roll_no).maybeSingle());
+  }
   if (exists) {
     idByEmail[u.email] = exists.id;
     // ── self-heal: stored hash must verify under the CURRENT hashing scheme ──
@@ -154,6 +99,7 @@ for (const u of USERS) {
             name: u.name,
             roll_no: u.roll_no || null,
             dues: u.dues || null,
+            email: u.email,
           };
           // If the schema doesn't include dues, this will error; ignore
           await sb.from("profiles").update(updates).eq("id", exists.id);
@@ -164,16 +110,16 @@ for (const u of USERS) {
       continue;
     }
     const salt = crypto.randomBytes(8).toString("hex");
-    must(await sb.from("profiles").update({ salt, password_hash: hashPassword(u.__pw, salt) }).eq("id", exists.id));
+    must(await sb.from("profiles").update({ salt, password_hash: hashPassword(u.__pw, cachedSalt) }).eq("id", exists.id));
     // Also update seeded metadata + dues for existing student rows
     if (u.role === "STUDENT") {
       try {
-        const updates2 = { name: u.name, roll_no: u.roll_no || null, dues: u.dues || null };
+        const updates2 = { name: u.name, roll_no: u.roll_no || null, dues: u.dues || null, email: u.email };
         await sb.from("profiles").update(updates2).eq("id", exists.id);
       } catch (e) {
         // ignore if column doesn't exist yet
       }
-    }
+    }s; de
     repaired++;
     console.log(`↺ repaired password hash for ${u.email} (was seeded with an older format)`);
     continue;
@@ -198,9 +144,10 @@ const existing = must(await sb.from("clearance_requests").select("id").limit(1))
 if (existing.length) {
   console.log("· registry already has requests — skipping demo history");
 } else {
-  const stuA = idByEmail["r220101@rguktrkv.ac.in"];
-  const stuB = idByEmail["r220103@rguktrkv.ac.in"];
-  const stuC = idByEmail["r220104@rguktrkv.ac.in"];
+  // Map demo history to the new seeded demo accounts
+  const stuA = idByEmail["r220921@rguktrkv.ac.in"]; // M Mahesh — completed, NO_DUES
+  const stuB = idByEmail["r220112@rguktrkv.ac.in"]; // Nikhil Rao — in-progress
+  const stuC = idByEmail["r220114@rguktrkv.ac.in"]; // Rahul Gupta — cancelled
   const officerOf = (d) =>
     USERS.find((u) => u.role === "STAFF" && u.dept === d).name;
   const r1 = must(await sb.from("clearance_requests").insert({
@@ -212,7 +159,7 @@ if (existing.length) {
     return {
       request_id: r1.id, department_id: d, status: "APPROVED", remarks: "Verified — no dues.",
       approved_by: officerOf(d), signed_at: at,
-      signature_hash: shortSign(`R220101|${d}|${at}`),
+      signature_hash: shortSign(`R220921|${d}|${at}`),
     };
   }));
 
@@ -223,7 +170,7 @@ if (existing.length) {
     ["FINANCE", "LIBRARY", "SPORTS"].includes(d)
       ? { request_id: r2.id, department_id: d, status: "APPROVED", remarks: "Cleared.",
           approved_by: officerOf(d), signed_at: hoursAgo(12),
-          signature_hash: shortSign(`R220103|${d}|${hoursAgo(12)}`) }
+          signature_hash: shortSign(`R220112|${d}|${hoursAgo(12)}`) }
       : { request_id: r2.id, department_id: d, status: "PENDING" }
   ));
 
@@ -240,10 +187,10 @@ if (existing.length) {
     message: "Graduation Clearance fully approved — certificate CV-26-R4J8KX is ready.",
   });
   await sb.from("audit_log").insert([
-    { actor_name: "Aarav Kumar", action: "REQUEST_CREATED", detail: "Final Year / Graduation Clearance", created_at: daysAgo(4) },
-    { actor_name: "System", action: "CERTIFICATE_ISSUED", detail: "Certificate CV-26-R4J8KX issued to Aarav Kumar", created_at: daysAgo(2) },
-    { actor_name: "Chaitanya N", action: "REQUEST_CREATED", detail: "Final Year / Graduation Clearance", created_at: hoursAgo(20) },
-    { actor_name: "Divya Shetty", action: "REQUEST_CANCELLED", detail: "Hostel Vacating Clearance — reason: Submitted by mistake — selected the wrong semester while filing.", created_at: daysAgo(1) },
+    { actor_name: "M Mahesh", action: "REQUEST_CREATED", detail: "Final Year / Graduation Clearance", created_at: daysAgo(4) },
+    { actor_name: "System", action: "CERTIFICATE_ISSUED", detail: "Certificate CV-26-R4J8KX issued to M Mahesh", created_at: daysAgo(2) },
+    { actor_name: "Nikhil Rao", action: "REQUEST_CREATED", detail: "Final Year / Graduation Clearance", created_at: hoursAgo(20) },
+    { actor_name: "Rahul Gupta", action: "REQUEST_CANCELLED", detail: "Hostel Vacating Clearance — reason: Submitted by mistake — selected the wrong semester while filing.", created_at: daysAgo(1) },
   ]);
   console.log("✔ demo history seeded (1 fully-signed certificate + 1 in-progress graduation file)");
 }

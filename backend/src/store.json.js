@@ -33,11 +33,16 @@ const signedApproval = (requestId, dept, rollNo, officer, at, remarks) => ({
 function seed() {
   const mk = (n, e, p, r, d, ro, x) => ({ id: uid("usr"), ...mkUser(n, e, p, r, d, ro, x) });
   const users = [
-    // Students
-    mk("Ananya Verma", "ananya@campus.edu", "student123", "STUDENT", null, "CS22B1047"),
-    mk("Rohan Mehta", "rohan@campus.edu", "student123", "STUDENT", null, "EC22B0913"),
-    mk("Karan Patel", "karan@campus.edu", "student123", "STUDENT", null, "ME21B0755"),
-    mk("Zoya Khan", "zoya@campus.edu", "student123", "STUDENT", null, "BT23B0621"),
+    // Students — new demo set (10)
+    mk("B Praveen", "o220854@rguktrkv.ac.in", "student123", "STUDENT", null, "O220854", { meta: { campus: "rguktrkv" } }),
+    mk("C Kiran", "r220007@rguktrkv.ac.in", "student123", "STUDENT", null, "R220007", { meta: { campus: "rguktrkv" } }),
+    mk("M Mahesh", "r220921@rguktrkv.ac.in", "student123", "STUDENT", null, "R220921", { dues: Object.fromEntries(["FINANCE","LIBRARY","HOSTEL","SPORTS","PHYSICS_LAB","CHEMISTRY_LAB","DEAN","AO","DIRECTOR"].map((d) => [d, { v: 2, status: "NO_DUES", total: 0, checkedAt: new Date().toISOString(), lines: [] } ])), meta: { campus: "rguktrkv" } }),
+    mk("Nikhil Rao", "r220112@rguktrkv.ac.in", "student123", "STUDENT", null, "R220112", { FINANCE: { v: 2, lines: [ { label: "Tuition fee", detail: "Semester instalment unpaid", amount: 15000 } ], total: 15000, status: "DUES_FOUND" }, meta: { phone: "+91-7700010112", campus: "rguktrkv" } }),
+    mk("Priya Sharma", "r220113@rguktrkv.ac.in", "student123", "STUDENT", null, "R220113", { LIBRARY: { v: 2, lines: [ { label: "Books pending", detail: "2 titles past due", value: "2", amount: 700 } ], books: [ { id: "LIB-2026-02001", name: "Algorithms", issueDate: "2026-06-01", dueDate: "2026-06-15", amount: 350, status: "PENDING" }, { id: "LIB-2026-02002", name: "Discrete Math", issueDate: "2026-06-03", dueDate: "2026-06-17", amount: 350, status: "PENDING" } ], total: 700, status: "DUES_FOUND" }, meta: { phone: "+91-7700010113", campus: "rguktrkv" } }),
+    mk("Rahul Gupta", "r220114@rguktrkv.ac.in", "student123", "STUDENT", null, "R220114", { HOSTEL: { v: 2, lines: [ { label: "Hostel dues", detail: "Room rent — July", amount: 3000 } ], total: 3000, status: "DUES_FOUND" }, meta: { phone: "+91-7700010114", campus: "rguktrkv" } }),
+    mk("Sangeeta Rao", "r220115@rguktrkv.ac.in", "student123", "STUDENT", null, "R220115", { SPORTS: { v: 2, lines: [ { label: "Equipment charges", detail: "Replacement racket", amount: 1200 } ], total: 1200, status: "DUES_FOUND" }, meta: { phone: "+91-7700010115", campus: "rguktrkv" } }),
+    mk("Vikram Singh", "r220116@rguktrkv.ac.in", "student123", "STUDENT", null, "R220116", { PHYSICS_LAB: { v: 2, lines: [ { label: "Equipment unreturned", detail: "Oscilloscope lead", amount: 600 } ], total: 600, status: "DUES_FOUND" }, meta: { phone: "+91-7700010116", campus: "rguktrkv" } }),
+    mk("Anita Das", "r220117@rguktrkv.ac.in", "student123", "STUDENT", null, "R220117", { CHEMISTRY_LAB: { v: 2, lines: [ { label: "Breakage charge", detail: "Cracked beaker", amount: 1200 } ], total: 1200, status: "DUES_FOUND" }, FINANCE: { v: 2, lines: [ { label: "Tuition fee", detail: "Partial instalment unpaid", amount: 5000 } ], total: 5000, status: "DUES_FOUND" }, meta: { phone: "+91-7700010117", campus: "rguktrkv" } }),
     // Officers (one account per office)
     mk("P. Ramesh", "finance@campus.edu", "staff123", "STAFF", "FINANCE"),
     mk("Meera Krishnan", "library@campus.edu", "staff123", "STAFF", "LIBRARY"),
@@ -54,45 +59,45 @@ function seed() {
     // Admin
     mk("Dr. S. Rao", "admin@campus.edu", "admin123", "ADMIN"),
   ];
-  const rohan = users[1];
-  const karan = users[2];
+  // Demo history participants: choose seeded indexes for completed/in-progress/cancelled
+  const completedStudent = users[2]; // M Mahesh (NO DUES)
+  const inProgressStudent = users[3]; // Nikhil Rao
   const byDept = Object.fromEntries(users.filter((u) => u.role === "STAFF").map((u) => [normDept(u.dept), u]));
 
   const db = { users, requests: [], clearances: [], notifications: [], audit: [], payments: [], passwordResets: [] };
   const pushAudit = (actorName, action, detail, at) =>
     db.audit.push({ id: uid("aud"), actorName, action, detail, createdAt: at || new Date().toISOString() });
 
-  // ── Rohan: COMPLETED Graduation Clearance, all 9 offices signed off ──
-  const r1 = { id: uid("req"), studentId: rohan.id, purpose: "Final Year / Graduation Clearance", createdAt: daysAgo(4), completedAt: daysAgo(2), certificateCode: "CV-26-R4J8KX" };
+  // ── Completed demo: M Mahesh — NO DUES across all offices, certificate issued
+  const r1 = { id: uid("req"), studentId: completedStudent.id, purpose: "Final Year / Graduation Clearance", createdAt: daysAgo(4), completedAt: daysAgo(2), certificateCode: "CV-26-R4J8KX" };
   db.requests.push(r1);
   ALL_OFFICES.forEach((d, i) => {
     const at = daysAgo(2.6 - i * 0.05);
-    db.clearances.push({ ...signedApproval(r1.id, d, rohan.rollNo, byDept[d].name, at, "Verified — no dues."),
-      dues: computeDues({ rollNo: rohan.rollNo, dept: d, checkedAt: at }) });
+    db.clearances.push({ ...signedApproval(r1.id, d, completedStudent.rollNo, byDept[d].name, at, "Verified — no dues."),
+      dues: computeDues({ rollNo: completedStudent.rollNo, dept: d, checkedAt: at }) });
   });
-  pushAudit("Rohan Mehta", "REQUEST_CREATED", "Final Year / Graduation Clearance", daysAgo(4));
-  pushAudit("System", "CERTIFICATE_ISSUED", "Certificate CV-26-R4J8KX issued to Rohan Mehta", daysAgo(2));
+  pushAudit(completedStudent.name, "REQUEST_CREATED", "Final Year / Graduation Clearance", daysAgo(4));
+  pushAudit("System", "CERTIFICATE_ISSUED", `Certificate CV-26-R4J8KX issued to ${completedStudent.name}`, daysAgo(2));
 
-  // ── Karan: IN-PROGRESS Graduation Clearance — 3 cleared, 6 pending ──
-  const r2 = { id: uid("req"), studentId: karan.id, purpose: "Final Year / Graduation Clearance", createdAt: hoursAgo(20) };
+  // ── In-progress demo: Nikhil Rao — some cleared, others pending
+  const r2 = { id: uid("req"), studentId: inProgressStudent.id, purpose: "Final Year / Graduation Clearance", createdAt: hoursAgo(20) };
   db.requests.push(r2);
   for (const d of ALL_OFFICES) {
     if (["FINANCE", "LIBRARY", "SPORTS"].includes(d)) {
       const at = hoursAgo(12);
-      db.clearances.push({ ...signedApproval(r2.id, d, karan.rollNo, byDept[d].name, at, "Cleared."),
-        dues: computeDues({ rollNo: karan.rollNo, dept: d, checkedAt: at }) });
+      db.clearances.push({ ...signedApproval(r2.id, d, inProgressStudent.rollNo, byDept[d].name, at, "Cleared."),
+        dues: computeDues({ rollNo: inProgressStudent.rollNo, dept: d, checkedAt: at }) });
     } else {
-      // Pending steps keep the dues snapshot the officer will review —
-      // Karan's HOSTEL and PHYSICS_LAB records intentionally show DUES.
+      // Pending steps keep the dues snapshot the officer will review
       db.clearances.push({ id: uid("clr"), requestId: r2.id, dept: d, status: "PENDING",
-        dues: computeDues({ rollNo: karan.rollNo, dept: d, checkedAt: r2.createdAt }) });
+        dues: computeDues({ rollNo: inProgressStudent.rollNo, dept: d, checkedAt: r2.createdAt }) });
     }
   }
-  pushAudit("Karan Patel", "REQUEST_CREATED", "Final Year / Graduation Clearance", hoursAgo(20));
+  pushAudit(inProgressStudent.name, "REQUEST_CREATED", "Final Year / Graduation Clearance", hoursAgo(20));
 
   // ── Zoya: CANCELLED hostel-vacating filing (history + read-only demo) ──
   const r3 = {
-    id: uid("req"), studentId: users[3].id, purpose: "Hostel Vacating Clearance",
+    id: uid("req"), studentId: users[4].id, purpose: "Hostel Vacating Clearance",
     createdAt: daysAgo(1.2), cancelledAt: daysAgo(1), cancelledBy: "Student",
     cancellationReason: "Submitted by mistake — selected the wrong semester while filing.",
   };

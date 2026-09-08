@@ -37,6 +37,26 @@ const notify = async (userId, message, type = "info") =>
 const audit = async (actorName, action, detail) =>
   must(await sb.from("audit_log").insert({ actor_name: actorName, action, detail }));
 
+// Resend integration: server-side send using RESEND_API_KEY (non-fatal)
+async function sendResendEmail({ to, subject, text, html }) {
+  if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+  const payload = { from: "ClearVault <onboarding@resend.dev>", to, subject };
+  if (html) payload.html = html;
+  if (text) payload.text = text;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  let body = null;
+  try { body = await res.json(); } catch (e) { body = null; }
+  if (!res.ok) throw new Error(`Resend API error ${res.status}: ${JSON.stringify(body)}`);
+  return body;
+}
+
 /** Write helper: if NOT-YET-MIGRATED columns are referenced, strip them and retry.
  *  Works for BOTH a single row object and an ARRAY of rows (bulk insert) —
  *  spreading an array with { ...arr } would corrupt it into { "0": row, "1": row… },
@@ -227,6 +247,22 @@ export async function createRequest(student, typeObj) {
   // 3) side effects + return
   await notify(student.id, `${typeObj.title} filed — routed to ${typeObj.requires.length} ${typeObj.requires.length === 1 ? "office" : "offices"}.`);
   await audit(student.name, "REQUEST_CREATED", `${typeObj.title} · requires ${typeObj.requires.join(", ")}`);
+  // Send a transactional email via Resend (non-fatal)
+  await safeAux("resend email", async () => {
+    const subject = `ClearVault — request ${req.id} received`;
+    const frontend = process.env.FRONTEND_URL || process.env.BACKEND_URL || "";
+    const link = frontend ? `${frontend.replace(/\/$/, "")}/requests/${req.id}` : "";
+    const text = `Hello ${student.name},\n\n` +
+      `We received your request (${req.id}) for ${typeObj.title} on ${req.createdAt}. ` +
+      `It's been forwarded to ${typeObj.requires.length} ${typeObj.requires.length === 1 ? "office" : "offices"}.\n\n` +
+      (link ? `View your request: ${link}\n\n` : "") +
+      `Regards,\nClearVault`;
+    const html = `<p>Hello ${student.name},</p><p>We received your request <b>${req.id}</b> for <b>${typeObj.title}</b> on <b>${req.createdAt}</b>. It has been forwarded to ${typeObj.requires.length} ${typeObj.requires.length === 1 ? "office" : "offices"}.</p>` +
+      (link ? `<p><a href="${link}">View your request in ClearVault</a></p>` : "") +
+      `<p>Regards,<br/>ClearVault</p>`;
+    const toAddr = process.env.DEMO_EMAIL_RECIPIENT || student.email;
+    await sendResendEmail({ to: toAddr, subject, text, html });
+  });
   return req;
 }
 
