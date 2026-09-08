@@ -28,7 +28,13 @@ router.get("/request-types", requireRole("STUDENT"), (_req, res) => {
 
 /** Every request this student has ever filed (typed + status) — powers "Your requests" */
 router.get("/requests/list", requireRole("STUDENT"), async (req, res) => {
-  res.json({ requests: await listStudentRequests(req.user.id) });
+  const reqs = await listStudentRequests(req.user.id);
+  res.json({
+    requests: reqs.map((r) => ({
+      ...r,
+      clearances: (r.clearances || []).map(withDeptMeta),
+    })),
+  });
 });
 
 /**

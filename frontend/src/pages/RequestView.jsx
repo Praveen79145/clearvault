@@ -4,6 +4,8 @@ import { api, fullDate } from "../api.js";
 import Icon, { DEPT_ICON } from "../icons.jsx";
 import Shell from "../components/Shell.jsx";
 import CancelModal from "../components/CancelModal.jsx";
+import DepartmentTracker from "../components/DepartmentTracker.jsx";
+import CombinedTCGraduation from "./CombinedTCGraduation.jsx";
 
 const META = {
   PENDING: { badge: "badge-wait", label: "Pending" },
@@ -19,23 +21,21 @@ const OVERALL = {
 /** Cancellable states (maps to the spec's DRAFT / SUBMITTED / PENDING / UNDER_REVIEW) */
 const CANCELLABLE = (overall) => overall === "IN_PROGRESS" || overall === "ACTION_REQUIRED";
 
-function Segments({ clearances }) {
-  return (
-    <div className="flex gap-1.5 mt-5" role="img" aria-label="Office progress">
-      {clearances.map((c) => (
-        <div key={c.id}
-          className={`seg flex-1 ${c.status === "APPROVED" ? "seg-good" : c.status === "REJECTED" ? "seg-bad" : "seg-wait"}`}
-          title={`${c.deptName}: ${META[c.status].label}`}>
-          <i />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function RequestView() {
   const { type } = useParams();
   const navigate = useNavigate();
+
+  // For the combined TC & Graduation card, redirect to the combined page
+  if (type === "tc-graduation") {
+    return <CombinedTCGraduation />;
+  }
+
+  // For legacy types that map to the combined card, also redirect
+  if (type === "tc" || type === "graduation") {
+    // Keep handling them as individual types for backward compatibility
+    // The backend and API already handle the mapping
+  }
+
   const [user, setUser] = useState(null);
   const [catalog, setCatalog] = useState(null);       // request-type registry from API
   const [detail, setDetail] = useState(null);         // { request, overall, clearances }
@@ -240,17 +240,20 @@ export default function RequestView() {
 
       {/* Progress */}
       <div className={`card p-6 mt-6 ${isCancelled ? "opacity-60" : ""}`}>
-        <div className="flex items-baseline justify-between gap-4">
+        <div className="flex items-baseline justify-between gap-4 mb-5">
           <p className="text-[14px] font-semibold">
             {cleared} of {clearances.length} mandatory approvals cleared
           </p>
           <p className="kicker !text-[10px]">{isCancelled ? "workflow stopped" : "updates automatically"}</p>
         </div>
-        <Segments clearances={clearances} />
-        <div className="flex justify-between mt-2.5">
-          {clearances.map((c) => (
-            <p key={c.id} className="flex-1 text-left kicker !text-[9px] px-0.5 first:pl-0 truncate">{deptShort(c)}</p>
-          ))}
+        
+        {/* Simple progress bar */}
+        <div className="w-full bg-line rounded-full h-2 overflow-hidden">
+          <div
+            className="h-full bg-brand transition-all duration-500"
+            style={{ width: `${clearances.length > 0 ? (cleared / clearances.length) * 100 : 0}%` }}
+            aria-label={`${cleared} of ${clearances.length} offices cleared`}
+          />
         </div>
       </div>
 
@@ -326,9 +329,12 @@ export default function RequestView() {
         </div>
       )}
 
-      {/* Department ledger */}
+      {/* Department tracker visualization */}
+      <DepartmentTracker clearances={clearances} />
+
+      {/* Department ledger (detailed view) */}
       <div className="card mt-6 overflow-hidden">
-        <p className="kicker px-5 pt-4 pb-3">Office ledger {isCancelled && "— frozen at cancellation"}</p>
+        <p className="kicker px-5 pt-4 pb-3">Detailed Department Records {isCancelled && "— frozen at cancellation"}</p>
         <div className="border-t border-line divide-y divide-line">
           {clearances.map((c) => (
             <div key={c.id} className="px-5 py-4 flex flex-wrap items-center gap-x-5 gap-y-3">

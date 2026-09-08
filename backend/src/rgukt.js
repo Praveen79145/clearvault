@@ -3,8 +3,8 @@
 // unit-testable (see scripts/test-rgukt.js). Backend enforces; UI only hints.
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Exact student format: campus prefix r/o/n/s + 6 digits @ rguktrkv.ac.in */
-export const RGUKT_EMAIL_RE = /^[rons][0-9]{6}@rguktrkv\.ac\.in$/;
+/** Exact student format: campus prefix r/o/n/s + 6 digits @ rguktrkv.ac.in or rguktong.ac.in */
+export const RGUKT_EMAIL_RE = /^[rons][0-9]{6}@rgukt(rkv|ong)\.ac\.in$/;
 
 export const RGUKT_EMAIL_HINT = "r220246@rguktrkv.ac.in";
 

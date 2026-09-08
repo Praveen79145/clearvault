@@ -7,6 +7,11 @@
 
 export const DEPTS = [
   {
+    id: "ADMIN", code: "ADM", name: "Administrative Office", short: "Admin",
+    officerTitle: "Administrative Officer", icon: "stamp", legacy: [],
+    checks: ["Enrollment status verified", "Academic record confirmed"],
+  },
+  {
     id: "FINANCE", code: "FIN", name: "Finance Office", short: "Finance",
     officerTitle: "Finance Officer", icon: "wallet", legacy: ["ACCOUNTS"],
     checks: ["Tuition & term fees settled", "Pending payments reconciled", "Scholarship credit verified", "Payment receipts matched"],

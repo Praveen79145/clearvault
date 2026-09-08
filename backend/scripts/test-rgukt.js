@@ -70,7 +70,7 @@ t("rejects tampered payloads (missing sub/email/null)", () => {
   expect(!validateGoogleIdentity({ email: "r220246@rguktrkv.ac.in" }).ok, "no sub");
   expect(!validateGoogleIdentity({ sub: "1" }).ok, "no email");
 });
-t("regex is exact: " + RGUKT_EMAIL_RE, () => { expect(String(RGUKT_EMAIL_RE) === "/^[rons][0-9]{6}@rguktrkv\\.ac\\.in$/", "exact regex"); });
+t("regex is exact: " + RGUKT_EMAIL_RE, () => { expect(String(RGUKT_EMAIL_RE) === "/^[rons][0-9]{6}@rgukt(rkv|ong)\\.ac\\.in$/", "exact regex"); });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);
