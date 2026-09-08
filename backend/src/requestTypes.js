@@ -27,7 +27,7 @@ export const REQUEST_TYPES = [
     blurb: "Request an official certificate confirming your enrollment and academic standing.",
     purpose: "Study Certificate",
     icon: "award",
-    requires: ["ADMIN"], // Administrative Office only
+    requires: ["AO"], // Administrative Office
   },
   {
     id: "no-due-certificate",

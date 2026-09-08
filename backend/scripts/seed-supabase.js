@@ -133,7 +133,8 @@ const USERS = [
   mkUser("Warden Desk", "hostels@campus.edu", "staff123", "STAFF", "HOSTEL"),    // legacy alias
   mkUser("Dr. S. Rao", "admin@campus.edu", "admin123", "ADMIN"),
 ];
-const ALL = REQUEST_TYPES.find((t) => t.id === "graduation").requires;
+// Ensure we select the combined TC & Graduation card (current id: "tc-graduation").
+const ALL = (REQUEST_TYPES.find((t) => t.id === "tc-graduation") || { requires: [] }).requires;
 
 const idByEmail = {};
 let created = 0, repaired = 0, kept = 0;

@@ -7,11 +7,6 @@
 
 export const DEPTS = [
   {
-    id: "ADMIN", code: "ADM", name: "Administrative Office", short: "Admin",
-    officerTitle: "Administrative Officer", icon: "stamp", legacy: [],
-    checks: ["Enrollment status verified", "Academic record confirmed"],
-  },
-  {
     id: "FINANCE", code: "FIN", name: "Finance Office", short: "Finance",
     officerTitle: "Finance Officer", icon: "wallet", legacy: ["ACCOUNTS"],
     checks: ["Tuition & term fees settled", "Pending payments reconciled", "Scholarship credit verified", "Payment receipts matched"],
@@ -59,7 +54,7 @@ export const DEPTS = [
 ];
 
 /** Old stored codes → current codes (read-path only; nothing is rewritten). */
-export const LEGACY_DEPT_MAP = { ACCOUNTS: "FINANCE", HOSTELS: "HOSTEL" };
+export const LEGACY_DEPT_MAP = { ACCOUNTS: "FINANCE", HOSTELS: "HOSTEL", ADMIN: "AO" };
 export const normDept = (id) => LEGACY_DEPT_MAP[id] || id;
 
 /** Lookup that also understands legacy codes and unknown ids safely. */

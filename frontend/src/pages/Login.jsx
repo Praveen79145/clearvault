@@ -45,7 +45,7 @@ export default function Login() {
       setLogin((current) => ({ ...current, email: saved }));
       setRemember(true);
     }
-  }, [location.search, location.state, login.email]);
+  }, [location.search, location.state]);
 
   const clearMessages = () => {
     setMessage("");
