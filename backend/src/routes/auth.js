@@ -2,7 +2,9 @@ import { Router } from "express";
 
 import {
   findUserByEmail,
+  findUserByIdentifier,
   registerStudent,
+  registerAuthority,
   findUserById,
   setUserPassword,
   updateUserPassword,
@@ -44,11 +46,11 @@ router.post("/login", async (req, res) => {
 
     if (!normalizedEmail || !password) {
       return res.status(400).json({
-        error: "Email and password are required.",
+        error: "Email/ID and password are required.",
       });
     }
 
-    const user = await findUserByEmail(normalizedEmail);
+    const user = await findUserByIdentifier(normalizedEmail);
 
     if (
       !user ||
@@ -88,6 +90,7 @@ router.post("/login", async (req, res) => {
 router.post("/register", async (req, res) => {
   try {
     const {
+      accountType,
       name,
       fullName,
       email,
@@ -98,7 +101,31 @@ router.post("/register", async (req, res) => {
       phone,
       password,
       confirmPassword,
+      dept
     } = req.body || {};
+
+    if (accountType === "AUTHORITY") {
+      const finalName = String(name || fullName || "").trim();
+      const finalId = String(idNo || rollNo || "").trim();
+      if (!finalName) return res.status(400).json({ error: "Full name is required." });
+      if (!finalId) return res.status(400).json({ error: "Employee ID is required." });
+      if (!dept) return res.status(400).json({ error: "Department is required." });
+      if (!password) return res.status(400).json({ error: "Password is required." });
+      if (password.length < 8) return res.status(400).json({ error: "Password must contain at least 8 characters." });
+      if (password !== confirmPassword) return res.status(400).json({ error: "Passwords do not match." });
+      
+      const user = await registerAuthority({
+        name: finalName,
+        employeeId: finalId,
+        dept,
+        password,
+      });
+      return res.status(201).json({
+        ok: true,
+        message: "Account created successfully.",
+        user: publicUser(user),
+      });
+    }
 
     const finalName = String(name || fullName || "").trim();
 
@@ -165,7 +192,7 @@ router.post("/register", async (req, res) => {
     }
 
     // RGUKT email validation
-    if (!finalEmail.endsWith("@rguktrkv.ac.in")) {
+    if (!finalEmail.endsWith("@rguktrkv.ac.in") && !finalEmail.endsWith("@rguktong.ac.in")) {
       return res.status(400).json({
         error: "Please use your official RGUKT college email.",
       });

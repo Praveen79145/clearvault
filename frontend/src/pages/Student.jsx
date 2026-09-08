@@ -4,6 +4,7 @@ import { api, fullDate } from "../api.js";
 import Icon from "../icons.jsx";
 import Shell from "../components/Shell.jsx";
 import CancelModal from "../components/CancelModal.jsx";
+import DepartmentTracker from "../components/DepartmentTracker.jsx";
 
 const inr = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
 
@@ -274,7 +275,15 @@ export default function Student() {
   // Latest request per type (list comes newest-first) — cancelled filings are history,
   // never the "active" one a card continues to.
   const latestByType = {};
-  (requests || []).forEach((r) => { if (!latestByType[r.type] && r.overall !== "CANCELLED") latestByType[r.type] = r; });
+  (requests || []).forEach((r) => {
+    if (r.overall === "CANCELLED") return; // Skip cancelled
+    // Map legacy types to new combined type
+    let typeKey = r.type;
+    if (r.type === "tc" || r.type === "graduation" || r.purpose === "TC / Migration Clearance" || r.purpose === "Final Year / Graduation Clearance") {
+      typeKey = "tc-graduation";
+    }
+    if (!latestByType[typeKey]) latestByType[typeKey] = r;
+  });
   const titleFor = (r) => (types || []).find((t) => t.id === r.type)?.title || r.purpose;
 
   return (
@@ -318,7 +327,7 @@ export default function Student() {
       )}
 
       {types && types.length > 0 && (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6">
           {types.map((t, i) => {
             const existing = latestByType[t.id];
             return (
@@ -367,40 +376,49 @@ export default function Student() {
         )}
 
         {requests && requests.length > 0 && (
-          <div className="card mt-5 overflow-hidden">
-            <div className="divide-y divide-line">
-              {requests.map((r) => (
-                <div key={r.id} className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4">
-                  <Link to={`/student/request/${r.type}`}
-                    className="flex flex-wrap items-center gap-x-5 gap-y-2 flex-1 min-w-[260px] hover:opacity-80 transition">
-                    <div className="min-w-[190px]">
+          <div className="card mt-5 overflow-hidden divide-y divide-line">
+            {requests.map((r) => {
+              const typeInfo = types?.find((t) => t.id === r.type);
+              return (
+                <div key={r.id} className="p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                    <div className="flex-1 min-w-[220px]">
                       <p className="font-semibold text-[14px]">{titleFor(r)}</p>
-                      <p className="font-mono text-[11px] text-muted mt-0.5">#{r.id.slice(-8).toUpperCase()}</p>
+                      <p className="font-mono text-[11px] text-muted mt-0.5">#{r.id.slice(-8).toUpperCase()} · Filed {fullDate(r.createdAt)}</p>
                       {r.overall === "CANCELLED" && r.cancellationReason && (
                         <p className="text-[11.5px] text-muted mt-1 italic">Reason: {r.cancellationReason}</p>
                       )}
                     </div>
-                    <p className="flex-1 text-[12.5px] text-muted">Filed {fullDate(r.createdAt)}</p>
-                    <span className="font-mono text-[10.5px] font-semibold text-muted tabular-nums border border-line rounded px-2 py-0.5">
-                      {r.cleared}/{r.total} offices cleared
-                    </span>
-                  </Link>
-                  <span className="inline-flex items-center gap-3">
-                    <span className={`badge ${OV[r.overall][0]}`}>{OV[r.overall][1]}</span>
-                    {CANCELLABLE(r.overall) && (
-                      <button
-                        onClick={() => setCancelTarget({ id: r.id, purpose: titleFor(r) })}
-                        className="btn btn-bad-outline btn-sm">
-                        <Icon name="x" size={12} /> Cancel
-                      </button>
-                    )}
-                    <Link to={`/student/request/${r.type}`} aria-label="View request">
-                      <Icon name="arrow-right" size={15} className="text-muted hover:text-ink transition" />
-                    </Link>
-                  </span>
+                    <div className="flex items-center gap-3">
+                      <span className={`badge ${OV[r.overall][0]}`}>{OV[r.overall][1]}</span>
+                      {CANCELLABLE(r.overall) && (
+                        <button
+                          onClick={() => setCancelTarget({ id: r.id, purpose: titleFor(r) })}
+                          className="btn btn-bad-outline btn-sm">
+                          <Icon name="x" size={12} /> Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Department tracker */}
+                  {typeInfo && (
+                    <div className="mt-5">
+                      <DepartmentTracker clearances={r.clearances} requestType={r.type} overall={r.overall} compact={true} />
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between mt-4 pt-4 border-t border-line/60 gap-4">
+                     <span className="font-mono text-[11px] font-semibold text-muted">
+                       {r.cleared}/{r.total} offices cleared · {Math.round((r.cleared / r.total) * 100)}% complete
+                     </span>
+                     <Link to={`/student/request/${r.type}`} className="text-[12.5px] font-semibold text-brand inline-flex items-center gap-1.5 hover:underline">
+                       View full tracking <Icon name="arrow-right" size={12} />
+                     </Link>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
       </div>

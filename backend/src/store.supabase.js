@@ -97,6 +97,16 @@ export async function findUserByEmail(email) {
   const row = must(await sb.from("profiles").select("*").eq("email", String(email).toLowerCase()).maybeSingle());
   return userRow(row);
 }
+export async function findUserByIdentifier(identifier) {
+  const norm = String(identifier || "").trim().toLowerCase();
+  if (!norm) return null;
+  let { data } = await sb.from("profiles").select("*").eq("email", norm).maybeSingle();
+  if (!data) {
+    const res = await sb.from("profiles").select("*").eq("roll_no", norm.toUpperCase()).maybeSingle();
+    data = res.data;
+  }
+  return userRow(data);
+}
 export async function findUserById(id) {
   const row = must(await sb.from("profiles").select("*").eq("id", id).maybeSingle());
   return userRow(row);
@@ -131,8 +141,18 @@ export async function listStudentRequests(studentId) {
   const cls = must(await sb.from("clearances").select("request_id,department_id,status").in("request_id", requests.map((r) => r.id)));
   return requests.map((r) => {
     const cs = cls.filter((c) => c.request_id === r.id);
-    // deriveOverall checks cancelledAt FIRST — dashboard shows CANCELLED, never a stale IN_PROGRESS
-    return { ...r, type: requestTypeOf(r), overall: deriveOverall(r, cs), total: requiredDeptsForRequest(r).length, cleared: cs.filter((c) => c.status === "APPROVED").length };
+    const order = requiredDeptsForRequest(r);
+    const sortedClearances = cs.map(clrRow).sort(
+      (a, b) => order.indexOf(a.dept) - order.indexOf(b.dept)
+    );
+    return {
+      ...r,
+      type: requestTypeOf(r),
+      overall: deriveOverall(r, cs),
+      total: order.length,
+      cleared: cs.filter((c) => c.status === "APPROVED").length,
+      clearances: sortedClearances,
+    };
   });
 }
 export async function clearancesFor(requestId) {
@@ -453,6 +473,31 @@ export async function registerStudent({ name, email, password, rollNo, phone }) 
   await safeAux("welcome notification", () =>
     notify(row.id, "Welcome to ClearVault. Raise your first clearance request from the dashboard.", "info"));
   await safeAux("audit", () => audit(row.name, "ACCOUNT_REGISTERED", `Student self-registration (${row.roll_no})`));
+  return publicUser(row);
+}
+
+/** Self-service authority registration (Login page → Register tab) */
+export async function registerAuthority({ name, employeeId, dept, password }) {
+  const normalizedId = String(employeeId || "").trim().toUpperCase();
+  if (!normalizedId) throw new Error("Employee ID is required.");
+  
+  const existing = await findUserByRollNo(normalizedId);
+  if (existing) throw new Error("This Employee ID is already registered.");
+  
+  const fakeEmail = `${normalizedId.toLowerCase()}@authority.clearvault.local`;
+  const salt = crypto.randomBytes(8).toString("hex");
+  
+  const payload = {
+    name: String(name).trim(), email: fakeEmail, role: "STAFF", dept: dept,
+    roll_no: normalizedId, phone: null,
+    salt, password_hash: hashPassword(password, salt), disabled: false,
+  };
+  
+  const res = await compatWrite("profiles.registerAuthority", (r) => sb.from("profiles").insert(r).select().single(), payload);
+  if (res?.error) throw new Error(`[supabase] ${res.error.message}`);
+  
+  const row = must(res);
+  await safeAux("audit", () => audit(row.name, "ACCOUNT_REGISTERED", `Authority self-registration (${row.roll_no})`));
   return publicUser(row);
 }
 

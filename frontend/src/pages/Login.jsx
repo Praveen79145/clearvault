@@ -113,13 +113,13 @@ export default function Login() {
 
       <form className="cv-form" onSubmit={handleLogin}>
         <AuthField
-          label="Email"
-          type="email"
+          label="Email or Employee ID"
+          type="text"
           value={login.email}
           onChange={(value) => setLogin((current) => ({ ...current, email: value }))}
-          placeholder="you@rguktrkv.ac.in"
+          placeholder="you@rguktrkv.ac.in or EMP-102"
           icon={<MailIcon />}
-          autoComplete="email"
+          autoComplete="username"
         />
 
         <AuthField

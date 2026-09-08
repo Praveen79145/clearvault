@@ -202,6 +202,10 @@ export async function upsertGoogleStudent({ email, studentId, campusPrefix, prof
 export async function findUserByEmail(email) {
   return db.users.find((u) => u.email === String(email).toLowerCase()) || null;
 }
+export async function findUserByIdentifier(identifier) {
+  const norm = String(identifier || "").trim().toLowerCase();
+  return db.users.find((u) => String(u.email||"").toLowerCase() === norm || String(u.rollNo||"").toLowerCase() === norm) || null;
+}
 export async function findUserById(id) {
   return db.users.find((u) => u.id === id) || null;
 }
@@ -245,12 +249,18 @@ export async function listStudentRequests(studentId) {
   for (const r of mine) {
     const cs = db.clearances.filter((c) => c.requestId === r.id);
     const total = requiredDeptsForRequest(r).length;
+    const order = requiredDeptsForRequest(r);
+    const sortedClearances = [...cs].sort(
+      (a, b) => order.indexOf(normDept(a.dept)) - order.indexOf(normDept(b.dept))
+    );
+
     out.push({
       ...r,
       type: requestTypeOf(r),
       overall: await overallStatus(r.id),
       total,
       cleared: cs.filter((c) => c.status === "APPROVED").length,
+      clearances: sortedClearances,
     });
   }
   return out;
@@ -431,6 +441,30 @@ export async function registerStudent({ name, email, password, rollNo, phone }) 
   db.users.push(u);
   notify(u.id, "Welcome to ClearVault. Raise your first clearance request from the dashboard.", "info");
   audit(u.name, "ACCOUNT_REGISTERED", `Student self-registration (${u.rollNo})`);
+  save();
+  return publicUser(u);
+}
+
+/** Self-service authority registration */
+export async function registerAuthority({ name, employeeId, dept, password }) {
+  const normalizedId = String(employeeId || "").trim().toUpperCase();
+  if (!normalizedId) throw new Error("Employee ID is required.");
+  
+  if (db.users.find((u) => String(u.rollNo || "").trim().toUpperCase() === normalizedId)) {
+    throw new Error("This Employee ID is already registered.");
+  }
+  
+  const fakeEmail = `${normalizedId.toLowerCase()}@authority.clearvault.local`;
+  const salt = crypto.randomBytes(8).toString("hex");
+  
+  const u = {
+    id: uid("usr"), name: String(name).trim(), email: fakeEmail, role: "STAFF", dept,
+    rollNo: normalizedId, phone: null,
+    salt, passwordHash: hashPassword(password, salt), disabled: false,
+  };
+  
+  db.users.push(u);
+  audit(u.name, "ACCOUNT_REGISTERED", `Authority self-registration (${u.rollNo})`);
   save();
   return publicUser(u);
 }
