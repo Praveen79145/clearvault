@@ -10,9 +10,9 @@ import AuthLayout, {
   UserIcon,
 } from "../components/AuthLayout.jsx";
 
-export default function Register() {
+export function RegisterForm() {
   const navigate = useNavigate();
-  const [accountType, setAccountType] = useState("STUDENT"); // STUDENT or AUTHORITY
+  const [accountType, setAccountType] = useState("STUDENT");
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -42,7 +42,7 @@ export default function Register() {
       setError("Please complete all required fields.");
       return;
     }
-    
+
     if (accountType === "STUDENT") {
       const email = form.email.trim().toLowerCase();
       const phone = form.phone.trim();
@@ -111,7 +111,7 @@ export default function Register() {
   };
 
   return (
-    <AuthLayout error={error}>
+    <>
       <div className="cv-welcome">WELCOME TO CLEARVAULT</div>
       <h2 className="cv-auth-title">Create your account</h2>
       <p className="cv-auth-subtitle">Register to access the clearance portal.</p>
@@ -120,14 +120,14 @@ export default function Register() {
         <button
           type="button"
           onClick={() => { setAccountType("STUDENT"); setError(""); }}
-          className={`flex-1 text-sm font-medium py-2 rounded-md transition ${accountType === "STUDENT" ? "bg-white shadow-sm text-ink" : "text-muted hover:text-ink"}`}
+          className={`flex-1 cursor-pointer text-sm font-medium py-2 rounded-md transition ${accountType === "STUDENT" ? "bg-[#f7f8f8] text-[#13231f] shadow-sm" : "text-[#7d867f] hover:text-[#13231f]"}`}
         >
           Student
         </button>
         <button
           type="button"
           onClick={() => { setAccountType("AUTHORITY"); setError(""); }}
-          className={`flex-1 text-sm font-medium py-2 rounded-md transition ${accountType === "AUTHORITY" ? "bg-white shadow-sm text-ink" : "text-muted hover:text-ink"}`}
+          className={`flex-1 cursor-pointer text-sm font-medium py-2 rounded-md transition ${accountType === "AUTHORITY" ? "bg-[#f7f8f8] text-[#13231f] shadow-sm" : "text-[#7d867f] hover:text-[#13231f]"}`}
         >
           Authority
         </button>
@@ -237,6 +237,12 @@ export default function Register() {
           {!loading && <ArrowIcon />}
         </button>
       </form>
-    </AuthLayout>
+
+      {error && <div className="cv-message error" role="alert">{error}</div>}
+    </>
   );
+}
+
+export default function Register() {
+  return <AuthLayout><RegisterForm /></AuthLayout>;
 }

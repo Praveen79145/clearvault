@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
@@ -95,35 +96,39 @@ export default function Landing() {
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-surface text-ink">
-      {/* =========================================================
-          HEADER
-          EXACTLY ONE THEME TOGGLE + ONE HEADER SIGN-IN
-      ========================================================= */}
-      <header className="relative z-50 border-b border-line bg-surface/95 backdrop-blur-md">
+      <motion.header
+        initial={{ opacity: 0, y: -6 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: false, amount: 0.2 }}
+        transition={{ duration: 0.24 }}
+        className="relative z-50 border-b border-line bg-surface/95 backdrop-blur-md"
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[70px] flex items-center justify-between">
-          {/* Logo */}
           <Logo sub="Registrar e-Clearance" />
 
-          {/* Header controls - intentionally rendered only once */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
 
-            <Link
-              to="/login"
-              className="btn btn-primary btn-sm flex items-center gap-2"
-            >
-              <span>Sign in</span>
-              <Icon name="arrow-right" size={14} />
-            </Link>
+            <motion.div whileHover={{ filter: "brightness(0.98)" }} whileTap={{ filter: "brightness(0.96)" }}>
+              <Link
+                to="/login"
+                className="btn btn-primary btn-sm flex items-center gap-2"
+              >
+                <span>Sign in</span>
+                <Icon name="arrow-right" size={14} />
+              </Link>
+            </motion.div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
-      {/* =========================================================
-          HERO
-      ========================================================= */}
-      <section className="relative min-h-[calc(100svh-70px)] overflow-hidden">
-        {/* Campus background */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: false, amount: 0.2 }}
+        transition={{ duration: 0.28 }}
+        className="relative min-h-[calc(100svh-70px)] overflow-hidden"
+      >
         <div
           className="absolute inset-0"
           style={{
@@ -135,7 +140,6 @@ export default function Landing() {
           aria-hidden="true"
         />
 
-        {/* Left readability overlay */}
         <div
           className="absolute inset-0"
           style={{
@@ -145,7 +149,6 @@ export default function Landing() {
           aria-hidden="true"
         />
 
-        {/* Bottom fade */}
         <div
           className="absolute inset-x-0 bottom-0 h-32"
           style={{
@@ -155,9 +158,7 @@ export default function Landing() {
           aria-hidden="true"
         />
 
-        {/* Hero content */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 min-h-[calc(100svh-70px)] flex flex-col justify-between">
-          {/* Main hero */}
           <div className="pt-20 sm:pt-24 md:pt-28 max-w-[610px]">
             <p className="kicker">
               Office of the Registrar · RGUKT RK Valley
@@ -179,44 +180,46 @@ export default function Landing() {
               Labs, Dean, AO and Director approvals.
             </p>
 
-            {/* Hero buttons */}
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                to="/login"
-                className="btn btn-brand !px-6 !py-3"
-              >
-                Sign in to the portal
-                <Icon name="arrow-right" size={15} />
-              </Link>
+              <motion.div whileHover={{ filter: "brightness(0.98)" }} whileTap={{ filter: "brightness(0.96)" }}>
+                <Link
+                  to="/login"
+                  className="btn btn-brand !px-6 !py-3"
+                >
+                  Sign in to the portal
+                  <Icon name="arrow-right" size={15} />
+                </Link>
+              </motion.div>
 
-              <Link
-                to="/verify/CV-26-R4J8KX"
-                className="btn btn-outline !px-5 !py-3"
-                style={{
-                  background: "rgba(255,255,255,0.82)",
-                  backdropFilter: "blur(5px)",
-                }}
-              >
-                <Icon name="qr-code" size={15} />
-                Verify a sample certificate
-              </Link>
+              <motion.div whileHover={{ filter: "brightness(0.98)" }} whileTap={{ filter: "brightness(0.96)" }}>
+                <Link
+                  to="/verify/CV-26-R4J8KX"
+                  className="btn btn-outline !px-5 !py-3"
+                  style={{
+                    background: "rgba(255,255,255,0.82)",
+                    backdropFilter: "blur(5px)",
+                  }}
+                >
+                  <Icon name="qr-code" size={15} />
+                  Verify a sample certificate
+                </Link>
+              </motion.div>
             </div>
           </div>
 
-          {/* Hero features */}
           <div className="pb-10 sm:pb-12 md:pb-14 pt-14">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-7 max-w-[700px]">
-              {HERO_FEATURES.map(([icon, l1, l2]) => (
-                <div
+              {HERO_FEATURES.map(([icon, l1, l2], index) => (
+                <motion.div
                   key={`${icon}-${l1}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.3 }}
+                  transition={{ duration: 0.24, delay: index * 0.05 }}
                   className="flex flex-col gap-2"
                 >
                   <span className="text-brand">
-                    <Icon
-                      name={icon}
-                      size={21}
-                      strokeWidth={1.7}
-                    />
+                    <Icon name={icon} size={21} strokeWidth={1.7} />
                   </span>
 
                   <p className="text-[13px] leading-snug font-semibold text-ink">
@@ -224,17 +227,20 @@ export default function Landing() {
                     <br />
                     {l2}
                   </p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      {/* =========================================================
-          PROCESS
-      ========================================================= */}
-      <section className="border-b border-line bg-surface">
+      <motion.section
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: false, amount: 0.18 }}
+        transition={{ duration: 0.28, delay: 0.08 }}
+        className="border-b border-line bg-surface"
+      >
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
           <p className="kicker">The process</p>
 
@@ -243,9 +249,13 @@ export default function Landing() {
           </h2>
 
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10">
-            {STEPS.map((step) => (
-              <div
+            {STEPS.map((step, index) => (
+              <motion.div
                 key={step.n}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: false, amount: 0.25 }}
+                transition={{ duration: 0.24, delay: index * 0.06 }}
                 className="border-t-2 border-line-strong pt-4"
               >
                 <p className="font-mono text-[11px] font-semibold text-brand">
@@ -259,16 +269,19 @@ export default function Landing() {
                 <p className="text-[13px] leading-relaxed text-muted mt-2">
                   {step.d}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      {/* =========================================================
-          FEATURES
-      ========================================================= */}
-      <section className="border-b border-line bg-surface">
+      <motion.section
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: false, amount: 0.18 }}
+        transition={{ duration: 0.28, delay: 0.12 }}
+        className="border-b border-line bg-surface"
+      >
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
           <p className="kicker">Capabilities</p>
 
@@ -277,9 +290,13 @@ export default function Landing() {
           </h2>
 
           <div className="mt-10 grid md:grid-cols-2 gap-x-10">
-            {FEATURES.map(([icon, title, description]) => (
-              <div
+            {FEATURES.map(([icon, title, description], index) => (
+              <motion.div
                 key={title}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: false, amount: 0.25 }}
+                transition={{ duration: 0.24, delay: index * 0.04 }}
                 className="flex gap-4 py-5 border-b border-line"
               >
                 <span className="mt-0.5 w-9 h-9 shrink-0 border border-line-strong rounded-md grid place-items-center text-brand">
@@ -295,16 +312,19 @@ export default function Landing() {
                     {description}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      {/* =========================================================
-          DEMO ACCOUNTS
-      ========================================================= */}
-      <section className="border-b border-line bg-surface">
+      <motion.section
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: false, amount: 0.18 }}
+        transition={{ duration: 0.28, delay: 0.16 }}
+        className="border-b border-line bg-surface"
+      >
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
           <p className="kicker">Try it now</p>
 
@@ -318,11 +338,14 @@ export default function Landing() {
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 mt-8 items-start">
-            {/* Students */}
-            <div className="card overflow-hidden">
-              <p className="kicker px-5 pt-4 pb-3">
-                Students
-              </p>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.2 }}
+              transition={{ duration: 0.24 }}
+              className="card overflow-hidden"
+            >
+              <p className="kicker px-5 pt-4 pb-3">Students</p>
 
               <div className="border-t border-line divide-y divide-line">
                 {DEMO_STUDENTS.map(([role, email, password]) => (
@@ -355,7 +378,6 @@ export default function Landing() {
                   </div>
                 ))}
 
-                {/* Admin */}
                 <div className="flex items-center gap-4 px-5 py-3.5">
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-[13.5px]">
@@ -368,9 +390,7 @@ export default function Landing() {
                   </div>
 
                   <Link
-                    to={`/login?email=${encodeURIComponent(
-                      "admin@campus.edu"
-                    )}&pw=admin123`}
+                    to={`/login?email=${encodeURIComponent("admin@campus.edu")}&pw=admin123`}
                     className="btn btn-outline btn-sm"
                   >
                     Continue
@@ -378,13 +398,16 @@ export default function Landing() {
                   </Link>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Officers */}
-            <div className="card overflow-hidden">
-              <p className="kicker px-5 pt-4 pb-3">
-                Approval offices
-              </p>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.2 }}
+              transition={{ duration: 0.24, delay: 0.06 }}
+              className="card overflow-hidden"
+            >
+              <p className="kicker px-5 pt-4 pb-3">Approval offices</p>
 
               <div className="border-t border-line divide-y divide-line">
                 {DEMO_OFFICERS.map(([role, email]) => (
@@ -403,9 +426,7 @@ export default function Landing() {
                     </div>
 
                     <Link
-                      to={`/login?email=${encodeURIComponent(
-                        email
-                      )}&pw=staff123`}
+                      to={`/login?email=${encodeURIComponent(email)}&pw=staff123`}
                       className="btn btn-outline btn-sm"
                     >
                       Continue
@@ -414,14 +435,11 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      {/* =========================================================
-          FOOTER
-      ========================================================= */}
       <footer>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <Logo size={16} />
