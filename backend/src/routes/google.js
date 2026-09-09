@@ -9,7 +9,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { validateGoogleIdentity } from "../rgukt.js";
 import { upsertGoogleStudent } from "../store.js";
-import { setSessionCookie } from "../auth.js";
+import { setSessionCookie, resolveUserHome } from "../auth.js";
 
 const router = Router();
 
@@ -132,8 +132,9 @@ router.get("/callback", async (req, res) => {
     step("user ready", { userId: user.id, rollNo: user.rollNo, campus: verdict.campusPrefix });
 
     setSessionCookie(res, user.id);
-    step("session created → redirecting", { to: `${FRONTEND_URL}/student` });
-    return res.redirect(`${FRONTEND_URL}/student`);
+    const redirectTarget = resolveUserHome(user);
+    step("session created → redirecting", { to: `${FRONTEND_URL}${redirectTarget}` });
+    return res.redirect(`${FRONTEND_URL}${redirectTarget}`);
   } catch (err) {
     console.error("[google] ✘ CALLBACK EXCEPTION:", err.stack || err.message);
     return fail(res, "server_error");

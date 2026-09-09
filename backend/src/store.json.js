@@ -107,7 +107,7 @@ function seed() {
   pushAudit("Zoya Khan", "REQUEST_CANCELLED",
     "Hostel Vacating Clearance — reason: Submitted by mistake — selected the wrong semester while filing.", daysAgo(1));
 
-  db.notifications.push({ id: uid("ntf"), userId: rohan.id, type: "success", isRead: false, message: "Graduation Clearance fully approved — certificate CV-26-R4J8KX is ready.", createdAt: daysAgo(2) });
+  db.notifications.push({ id: uid("ntf"), userId: completedStudent.id, type: "success", isRead: false, message: "Graduation Clearance fully approved — certificate CV-26-R4J8KX is ready.", createdAt: daysAgo(2) });
   return db;
 }
 

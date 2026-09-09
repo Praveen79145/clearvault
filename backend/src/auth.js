@@ -42,4 +42,15 @@ export const setSessionCookie = (res, userId) =>
 export const clearSessionCookie = (res) =>
   res.setHeader("Set-Cookie", `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
 
-export const homeFor = (role) => (role === "STUDENT" ? "/student" : role === "STAFF" ? "/staff" : "/admin");
+export const homeFor = (role) => {
+  const normalized = role === "AUTHORITY" ? "STAFF" : role;
+  if (normalized === "STUDENT") return "/student";
+  if (normalized === "STAFF") return "/staff";
+  if (normalized === "ADMIN") return "/admin";
+  return "/login";
+};
+
+export const resolveUserHome = (user) => {
+  if (!user) return "/login";
+  return homeFor(user.role);
+};
