@@ -37,9 +37,21 @@ export const requireRole = (...roles) => async (req, res, next) => {
 };
 
 export const setSessionCookie = (res, userId) =>
-  res.setHeader("Set-Cookie", `${COOKIE}=${encodeURIComponent(makeSessionValue(userId))}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 3600}`);
+  res.setHeader(
+    "Set-Cookie",
+    `${COOKIE}=${encodeURIComponent(makeSessionValue(userId))}; ` +
+      (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes("localhost")
+        ? `HttpOnly; SameSite=None; Secure; Path=/; Max-Age=${7 * 24 * 3600}`
+        : `HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 3600}`)
+  );
 
 export const clearSessionCookie = (res) =>
-  res.setHeader("Set-Cookie", `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+  res.setHeader(
+    "Set-Cookie",
+    `${COOKIE}=; ` +
+      (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes("localhost")
+        ? "HttpOnly; SameSite=None; Secure; Path=/; Max-Age=0"
+        : "HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
+  );
 
 export const homeFor = (role) => (role === "STUDENT" ? "/student" : role === "STAFF" ? "/staff" : "/admin");

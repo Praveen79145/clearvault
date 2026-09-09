@@ -1,5 +1,6 @@
 import "./env.js"; // must load before anything reads process.env
 import express from "express";
+import cors from "cors";
 import authRoutes from "./routes/auth.js";
 import googleRoutes from "./routes/google.js";
 import requestRoutes from "./routes/requests.js";
@@ -11,6 +12,17 @@ import paymentRoutes from "./routes/payments.js";
 
 const app = express();
 app.use(express.json());
+// Allow the configured frontend origin to make credentialed requests.
+// FRONTEND_URL should be set in backend/.env (e.g. http://localhost:5173 or https://clearvault.vercel.app)
+const FRONTEND_URL = process.env.FRONTEND_URL || "";
+if (FRONTEND_URL) {
+  const corsOptions = { origin: FRONTEND_URL, credentials: true };
+  app.use(cors(corsOptions));
+  app.options("*", cors(corsOptions));
+} else {
+  // In absence of FRONTEND_URL, allow same-origin (dev proxy) requests only.
+  app.use(cors({ origin: true, credentials: true }));
+}
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, service: "clearvault-api" }));
 

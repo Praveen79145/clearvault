@@ -1,10 +1,14 @@
-// Thin fetch wrapper — same-origin requests proxied to the Express API by Vite.
+// Thin fetch wrapper — uses VITE_API_URL when provided, otherwise relies on
+// Vite dev-server proxy for local development.
+const API_URL = import.meta.env.VITE_API_URL || "";
 export async function api(path, { method = "GET", body } = {}) {
-  const res = await fetch(path, {
+  const url = API_URL ? `${API_URL.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}` : path;
+  const credentials = API_URL ? "include" : "same-origin"; // include for cross-origin session cookies
+  const res = await fetch(url, {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
-    credentials: "same-origin",
+    credentials,
   });
   let data = null;
   try { data = await res.json(); } catch { /* empty body */ }
