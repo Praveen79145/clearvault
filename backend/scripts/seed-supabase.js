@@ -110,7 +110,7 @@ for (const u of USERS) {
       continue;
     }
     const salt = crypto.randomBytes(8).toString("hex");
-    must(await sb.from("profiles").update({ salt, password_hash: hashPassword(u.__pw, salt) }).eq("id", exists.id));
+    must(await sb.from("profiles").update({ salt, password_hash: hashPassword(u.__pw, cachedSalt) }).eq("id", exists.id));
     // Also update seeded metadata + dues for existing student rows
     if (u.role === "STUDENT") {
       try {
@@ -119,7 +119,7 @@ for (const u of USERS) {
       } catch (e) {
         // ignore if column doesn't exist yet
       }
-    }
+    }s; de
     repaired++;
     console.log(`↺ repaired password hash for ${u.email} (was seeded with an older format)`);
     continue;
