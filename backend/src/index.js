@@ -12,32 +12,17 @@ import paymentRoutes from "./routes/payments.js";
 
 const app = express();
 app.use(express.json());
-
-const LOCAL_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://127.0.0.1:3000"];
-const EXTRA_ORIGINS = [process.env.FRONTEND_URL, process.env.CLIENT_URL].filter(Boolean).map((value) => value.replace(/\/$/, ""));
-const ALLOWED_ORIGINS = [...new Set([...LOCAL_ORIGINS, ...EXTRA_ORIGINS])];
-const corsOptions = {
-  origin(origin, callback) {
-    const normalizedOrigin = origin ? origin.replace(/\/$/, "") : "";
-    const allowed = !origin || ALLOWED_ORIGINS.includes(normalizedOrigin);
-    if (allowed) {
-      if (origin) console.log(`[cors] allowed origin: ${origin}`);
-      callback(null, origin || true);
-      return;
-    }
-    console.warn(`[cors] blocked origin: ${origin}`);
-    callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-};
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
-app.use((req, _res, next) => {
-  console.log(`[auth] ${req.method} ${req.path} origin=${req.headers.origin || "same-origin"}`);
-  next();
-});
+// Allow the configured frontend origin to make credentialed requests.
+// FRONTEND_URL should be set in backend/.env (e.g. http://localhost:5173 or https://clearvault.vercel.app)
+const FRONTEND_URL = process.env.FRONTEND_URL || "";
+if (FRONTEND_URL) {
+  const corsOptions = { origin: FRONTEND_URL, credentials: true };
+  app.use(cors(corsOptions));
+  app.options("*", cors(corsOptions));
+} else {
+  // In absence of FRONTEND_URL, allow same-origin (dev proxy) requests only.
+  app.use(cors({ origin: true, credentials: true }));
+}
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, service: "clearvault-api" }));
 
