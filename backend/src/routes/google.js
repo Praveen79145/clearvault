@@ -9,7 +9,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { validateGoogleIdentity } from "../rgukt.js";
 import { upsertGoogleStudent } from "../store.js";
-import { setSessionCookie } from "../auth.js";
+import { setSessionCookie, resolveUserHome } from "../auth.js";
 
 const router = Router();
 
@@ -22,6 +22,11 @@ const STATE_COOKIE = "cv_oauth_state";
 
 const fail = (res, code, extra = "") => res.redirect(`${FRONTEND_URL}/login?oauth=${code}${extra}`);
 const setCookie = (res, str) => res.setHeader("Set-Cookie", str);
+const stateCookieString = (state, maxAge = 600) => {
+  const secure = process.env.NODE_ENV === "production" || (process.env.GOOGLE_CALLBACK_URL || "").startsWith("https://");
+  const sameSite = secure ? "None" : "Lax";
+  return `${STATE_COOKIE}=${state}; ${secure ? "Secure; " : ""}HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=${maxAge}`;
+};
 // Step logger — safe fields only (never secrets, tokens, or passwords)
 const step = (msg, obj = {}) => {
   const extra = Object.entries(obj).map(([k, v]) => `${k}=${v}`).join(" ");
@@ -35,7 +40,7 @@ router.get("/", (_req, res) => {
     return fail(res, "not_configured");
   }
   const state = crypto.randomBytes(16).toString("hex");
-  setCookie(res, `${STATE_COOKIE}=${state}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600`);
+  setCookie(res, stateCookieString(state, 600));
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", CLIENT_ID);
   url.searchParams.set("redirect_uri", CALLBACK_URL);
@@ -60,7 +65,7 @@ router.get("/callback", async (req, res) => {
   const cookies = Object.fromEntries(
     (req.headers.cookie || "").split(";").map((c) => c.trim().split("=")).filter((p) => p[0])
   );
-  setCookie(res, `${STATE_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+  setCookie(res, stateCookieString("", 0));
   if (!state || !cookies[STATE_COOKIE] || state !== cookies[STATE_COOKIE]) {
     step("state mismatch — possible CSRF or expired attempt");
     return fail(res, "invalid_state");
@@ -132,8 +137,9 @@ router.get("/callback", async (req, res) => {
     step("user ready", { userId: user.id, rollNo: user.rollNo, campus: verdict.campusPrefix });
 
     setSessionCookie(res, user.id);
-    step("session created → redirecting", { to: `${FRONTEND_URL}/student` });
-    return res.redirect(`${FRONTEND_URL}/student`);
+    const redirectTarget = resolveUserHome(user);
+    step("session created → redirecting", { to: `${FRONTEND_URL}${redirectTarget}` });
+    return res.redirect(`${FRONTEND_URL}${redirectTarget}`);
   } catch (err) {
     console.error("[google] ✘ CALLBACK EXCEPTION:", err.stack || err.message);
     return fail(res, "server_error");

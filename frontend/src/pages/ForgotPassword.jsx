@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout, { ArrowIcon, AuthField, MailIcon, LockIcon, EyeIcon } from "../components/AuthLayout.jsx";
 
-export default function ForgotPassword() {
+export function ForgotPasswordForm() {
   const navigate = useNavigate();
   const [step, setStep] = useState("email");
   const [email, setEmail] = useState("");
@@ -92,72 +92,76 @@ export default function ForgotPassword() {
   };
 
   return (
-    <AuthLayout message={message} error={error}>
-      <div className="cv-forgot">
-        {step === "email" ? (
-          <>
-            <div className="cv-welcome">ACCOUNT RECOVERY</div>
-            <h2 className="cv-auth-title">Forgot your password?</h2>
-            <p className="cv-forgot-description">Enter your college email associated with your ClearVault account. If the account exists, you will be able to reset your password.</p>
+    <div className="cv-forgot">
+      {step === "email" ? (
+        <>
+          <div className="cv-welcome">ACCOUNT RECOVERY</div>
+          <h2 className="cv-auth-title">Forgot your password?</h2>
+          <p className="cv-forgot-description">Enter your college email associated with your ClearVault account. If the account exists, you will be able to reset your password.</p>
 
-            <form className="cv-form" onSubmit={handleEmailSubmit}>
-              <AuthField
-                label="College email"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                placeholder="you@rguktrkv.ac.in"
-                icon={<MailIcon />}
-                autoComplete="email"
-              />
+          <form className="cv-form" onSubmit={handleEmailSubmit}>
+            <AuthField
+              label="College email"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              placeholder="you@rguktrkv.ac.in"
+              icon={<MailIcon />}
+              autoComplete="email"
+            />
 
-              <button className="cv-submit" type="submit" disabled={loading}>
-                {loading ? "Verifying…" : "Continue"}
-                {!loading && <ArrowIcon />}
-              </button>
-            </form>
-          </>
-        ) : (
-          <>
-            <div className="cv-welcome">ACCOUNT RECOVERY</div>
-            <h2 className="cv-auth-title">Create a new password</h2>
-            <p className="cv-forgot-description">Enter your new password below.</p>
+            <button className="cv-submit" type="submit" disabled={loading}>
+              {loading ? "Verifying…" : "Continue"}
+              {!loading && <ArrowIcon />}
+            </button>
+          </form>
+        </>
+      ) : (
+        <>
+          <div className="cv-welcome">ACCOUNT RECOVERY</div>
+          <h2 className="cv-auth-title">Create a new password</h2>
+          <p className="cv-forgot-description">Enter your new password below.</p>
 
-            <form className="cv-form" onSubmit={handlePasswordSubmit}>
-              <AuthField
-                label="New password"
-                type="password"
-                value={password}
-                onChange={setPassword}
-                placeholder="Enter new password"
-                icon={<LockIcon />}
-                autoComplete="new-password"
-                showPassword={showPassword}
-                onTogglePassword={() => setShowPassword((current) => !current)}
-              />
+          <form className="cv-form" onSubmit={handlePasswordSubmit}>
+            <AuthField
+              label="New password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              placeholder="Enter new password"
+              icon={<LockIcon />}
+              autoComplete="new-password"
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword((current) => !current)}
+            />
 
-              <AuthField
-                label="Confirm password"
-                type="password"
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder="Confirm new password"
-                icon={<LockIcon />}
-                autoComplete="new-password"
-                showPassword={showPassword}
-                onTogglePassword={() => setShowPassword((current) => !current)}
-              />
+            <AuthField
+              label="Confirm password"
+              type="password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              placeholder="Confirm new password"
+              icon={<LockIcon />}
+              autoComplete="new-password"
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword((current) => !current)}
+            />
 
-              <button className="cv-submit" type="submit" disabled={loading}>
-                {loading ? "Updating…" : "Update password"}
-                {!loading && <ArrowIcon />}
-              </button>
-            </form>
-          </>
-        )}
+            <button className="cv-submit" type="submit" disabled={loading}>
+              {loading ? "Updating…" : "Update password"}
+              {!loading && <ArrowIcon />}
+            </button>
+          </form>
+        </>
+      )}
 
-        <Link to="/login" className="cv-back-signin">← Back to sign in</Link>
-      </div>
-    </AuthLayout>
+      <Link to="/login" className="cv-back-signin">← Back to sign in</Link>
+      {message && <div className="cv-message success" role="status">{message}</div>}
+      {error && <div className="cv-message error" role="alert">{error}</div>}
+    </div>
   );
+}
+
+export default function ForgotPassword() {
+  return <AuthLayout><ForgotPasswordForm /></AuthLayout>;
 }

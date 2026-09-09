@@ -9,6 +9,13 @@ import { shortSign, hashPassword } from "./sign.js";
 import { DEPTS, deptById, normDept } from "./departments.js";
 import { REQUEST_TYPES, requestTypeOf, requiredDeptsForRequest, requiredDeptsForType } from "./requestTypes.js";
 import { computeDues, normalizeDues, inr } from "./dues.js";
+import { sendStatusEmail, sendTemplateEmail } from "./mailer.js";
+import {
+  requestFiledTemplate,
+  decisionTemplate,
+  certificateTemplate,
+  cancelledTemplate,
+} from "./emails/templates.js";
 
 export { DEPTS };
 
@@ -36,26 +43,6 @@ const notify = async (userId, message, type = "info") =>
   must(await sb.from("notifications").insert({ user_id: userId, message, type }));
 const audit = async (actorName, action, detail) =>
   must(await sb.from("audit_log").insert({ actor_name: actorName, action, detail }));
-
-// Resend integration: server-side send using RESEND_API_KEY (non-fatal)
-async function sendResendEmail({ to, subject, text, html }) {
-  if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
-  const payload = { from: "ClearVault <onboarding@resend.dev>", to, subject };
-  if (html) payload.html = html;
-  if (text) payload.text = text;
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  let body = null;
-  try { body = await res.json(); } catch (e) { body = null; }
-  if (!res.ok) throw new Error(`Resend API error ${res.status}: ${JSON.stringify(body)}`);
-  return body;
-}
 
 /** Write helper: if NOT-YET-MIGRATED columns are referenced, strip them and retry.
  *  Works for BOTH a single row object and an ARRAY of rows (bulk insert) —
@@ -247,22 +234,15 @@ export async function createRequest(student, typeObj) {
   // 3) side effects + return
   await notify(student.id, `${typeObj.title} filed — routed to ${typeObj.requires.length} ${typeObj.requires.length === 1 ? "office" : "offices"}.`);
   await audit(student.name, "REQUEST_CREATED", `${typeObj.title} · requires ${typeObj.requires.join(", ")}`);
-  // Send a transactional email via Resend (non-fatal)
-  await safeAux("resend email", async () => {
-    const subject = `ClearVault — request ${req.id} received`;
-    const frontend = process.env.FRONTEND_URL || process.env.BACKEND_URL || "";
-    const link = frontend ? `${frontend.replace(/\/$/, "")}/requests/${req.id}` : "";
-    const text = `Hello ${student.name},\n\n` +
-      `We received your request (${req.id}) for ${typeObj.title} on ${req.createdAt}. ` +
-      `It's been forwarded to ${typeObj.requires.length} ${typeObj.requires.length === 1 ? "office" : "offices"}.\n\n` +
-      (link ? `View your request: ${link}\n\n` : "") +
-      `Regards,\nClearVault`;
-    const html = `<p>Hello ${student.name},</p><p>We received your request <b>${req.id}</b> for <b>${typeObj.title}</b> on <b>${req.createdAt}</b>. It has been forwarded to ${typeObj.requires.length} ${typeObj.requires.length === 1 ? "office" : "offices"}.</p>` +
-      (link ? `<p><a href="${link}">View your request in ClearVault</a></p>` : "") +
-      `<p>Regards,<br/>ClearVault</p>`;
-    const toAddr = process.env.DEMO_EMAIL_RECIPIENT || student.email;
-    await sendResendEmail({ to: toAddr, subject, text, html });
-  });
+
+  const frontend = process.env.FRONTEND_URL || process.env.BACKEND_URL || "";
+  const dashboardLink = frontend ? `${frontend.replace(/\/$/, "")}/requests/${req.id}` : "";
+  void sendTemplateEmail(student.email, requestFiledTemplate({
+    username: student.name,
+    purpose: typeObj.title,
+    dashboardLink,
+  }));
+
   return req;
 }
 
@@ -309,6 +289,15 @@ export async function decide(clearanceId, approve, remarks, staff, duesAcknowled
     ? `${deptName} cleared your request. Sign-off ${signatureHash}`
     : `${deptName} returned your request: “${remarks}”. Resolve the due and re-apply.`,
     approve ? "success" : "danger");
+  const frontend = process.env.FRONTEND_URL || process.env.BACKEND_URL || "";
+  const dashboardLink = frontend ? `${frontend.replace(/\/$/, "")}/requests/${req.id}` : "";
+  void sendTemplateEmail(student.email, decisionTemplate({
+    username: student.name,
+    approved: approve,
+    deptName,
+    remarks: remarks || (duesInfo.total > 0 ? `Dues of ${inr(duesInfo.total)} verified as settled — waived on record.` : "No dues found."),
+    dashboardLink,
+  }));
   await audit(staff.name, approve ? "CLEARANCE_CLEARED" : "CLEARANCE_REJECTED",
     `${deptName} · ${prevStatus} → ${newStatus} · ${student.name} (${student.rollNo}) — ${remarks || (duesInfo.total > 0 ? "Dues verified as settled — waived on record." : "No dues found.")}` +
     (approve && duesInfo.total > 0 ? ` · dues ${inr(duesInfo.total)} acknowledged (waived by officer)` : ""));
@@ -320,6 +309,12 @@ export async function decide(clearanceId, approve, remarks, staff, duesAcknowled
     const code = "CV-26-" + crypto.randomBytes(3).toString("hex").toUpperCase();
     must(await sb.from("clearance_requests").update({ completed_at: new Date().toISOString(), certificate_code: code }).eq("id", req.id));
     await notify(student.id, `All mandatory approvals cleared. Certificate ${code} issued.`, "success");
+    const certificateLink = frontend ? `${frontend.replace(/\/$/, "")}/verify/${code}` : "";
+    void sendTemplateEmail(student.email, certificateTemplate({
+      username: student.name,
+      code,
+      downloadLink: certificateLink,
+    }));
     await audit("System", "CERTIFICATE_ISSUED", `Certificate ${code} issued to ${student.name}`);
   }
 }
@@ -429,6 +424,11 @@ export async function reapply(clearanceId, student) {
   }));
   const deptName = deptById(clearance.dept).name;
   await notify(student.id, `Re-application sent to ${deptName}.`);
+  void sendStatusEmail(
+    student.email,
+    "ClearVault — re-application sent",
+    `Hello ${student.name},\n\nYour re-application for ${deptName} has been submitted successfully.\n\nPlease wait while the department reviews it again.\n\nRegards,\nClearVault`
+  );
   await audit(student.name, "CLEARANCE_REAPPLIED", deptName);
 }
 
@@ -651,6 +651,11 @@ export async function cancelRequest(requestId, student, reason) {
 
   await safeAux("notify", () => notify(student.id,
     `You cancelled ${req.purpose}.${reason ? ` Reason: “${reason}”.` : ""} You may file a new request anytime.`, "info"));
+  void sendTemplateEmail(student.email, cancelledTemplate({
+    username: student.name,
+    purpose: req.purpose,
+    reason: reason || "No reason provided.",
+  }));
   await safeAux("audit", () => audit(student.name, "REQUEST_CANCELLED",
     `${req.purpose}${reason ? ` — reason: ${reason}` : " — no reason given"}`));
   return reqRow(res.data);

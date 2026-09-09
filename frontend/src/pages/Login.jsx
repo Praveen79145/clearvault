@@ -8,7 +8,7 @@ import AuthLayout, {
   MailIcon,
 } from "../components/AuthLayout.jsx";
 
-export default function Login() {
+export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const [login, setLogin] = useState({ email: "", password: "" });
@@ -19,7 +19,6 @@ export default function Login() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Priority: explicit demo-account navigation state -> URL query params -> remembered email
     const params = new URLSearchParams(location.search);
     const qEmail = params.get("email") || "";
     const qPassword = params.get("pw") || "";
@@ -99,7 +98,7 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout message={message} error={error}>
+    <>
       <div className="cv-welcome">WELCOME TO CLEARVAULT</div>
       <h2 className="cv-auth-title">Sign in to continue</h2>
       <p className="cv-auth-subtitle">Use your RGUKT account to access your clearance dashboard.</p>
@@ -150,6 +149,11 @@ export default function Login() {
           {!loading && <ArrowIcon />}
         </button>
       </form>
-    </AuthLayout>
+    </>
   );
+}
+
+export default function Login() {
+  const location = useLocation();
+  return <AuthLayout message={location.state?.message || ""} error=""><LoginForm /></AuthLayout>;
 }

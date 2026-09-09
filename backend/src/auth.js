@@ -36,10 +36,33 @@ export const requireRole = (...roles) => async (req, res, next) => {
   }
 };
 
+const isProductionSecureCookie = () =>
+  process.env.NODE_ENV === "production" ||
+  (process.env.BACKEND_URL || "").startsWith("https://") ||
+  (process.env.FRONTEND_URL || "").startsWith("https://") ||
+  (process.env.GOOGLE_CALLBACK_URL || "").startsWith("https://");
+
+const buildCookieString = (cookieValue, maxAge) => {
+  const secure = isProductionSecureCookie();
+  const sameSite = secure ? "None" : "Lax";
+  return `${cookieValue}; ${secure ? "Secure; " : ""}HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=${maxAge}`;
+};
+
 export const setSessionCookie = (res, userId) =>
-  res.setHeader("Set-Cookie", `${COOKIE}=${encodeURIComponent(makeSessionValue(userId))}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 3600}`);
+  res.setHeader("Set-Cookie", buildCookieString(`${COOKIE}=${encodeURIComponent(makeSessionValue(userId))}`, 7 * 24 * 3600));
 
 export const clearSessionCookie = (res) =>
-  res.setHeader("Set-Cookie", `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+  res.setHeader("Set-Cookie", buildCookieString(`${COOKIE}=`, 0));
 
-export const homeFor = (role) => (role === "STUDENT" ? "/student" : role === "STAFF" ? "/staff" : "/admin");
+export const homeFor = (role) => {
+  const normalized = role === "AUTHORITY" ? "STAFF" : role;
+  if (normalized === "STUDENT") return "/student";
+  if (normalized === "STAFF") return "/staff";
+  if (normalized === "ADMIN") return "/admin";
+  return "/login";
+};
+
+export const resolveUserHome = (user) => {
+  if (!user) return "/login";
+  return homeFor(user.role);
+};
