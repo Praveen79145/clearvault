@@ -5,8 +5,8 @@ import Icon, { DEPT_ICON } from "../icons.jsx";
 import Shell from "../components/Shell.jsx";
 
 const OV = {
-  IN_PROGRESS: ["badge-wait", "In progress"],
-  ACTION_REQUIRED: ["badge-bad", "Action required"],
+  IN_PROGRESS: ["badge-ink", "In progress"],
+  ACTION_REQUIRED: ["badge-wait", "Action required"],
   COMPLETED: ["badge-good", "Completed"],
   CANCELLED: ["badge-bad", "Cancelled"],
 };

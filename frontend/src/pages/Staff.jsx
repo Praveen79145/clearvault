@@ -14,7 +14,7 @@ function DuesPanel({ dues }) {
       <div className="px-4 py-2.5 border-b border-line bg-paper flex items-center justify-between gap-3">
         <p className="kicker !text-[10px]">Department dues record</p>
         {hasDues ? (
-          <span className="badge badge-bad">DUES FOUND</span>
+          <span className="badge badge-wait">DUES FOUND</span>
         ) : (
           <span className="badge badge-good">NO DUES</span>
         )}
@@ -25,20 +25,20 @@ function DuesPanel({ dues }) {
             <span>
               <span className={`flex items-center gap-2 text-[13px] font-medium ${l.amount > 0 ? "" : "text-muted"}`}>
                 {l.amount > 0
-                  ? <Icon name="alert" size={12} className="text-bad shrink-0" />
+                  ? <Icon name="alert" size={12} className="text-wait shrink-0" />
                   : <Icon name="check" size={12} strokeWidth={2.6} className="text-good shrink-0" />}
                 {l.label}
               </span>
               {l.detail && <span className="block text-[12px] text-muted mt-0.5 ml-5">{l.detail}</span>}
             </span>
-            <span className={`font-mono text-[12.5px] shrink-0 ${l.amount > 0 ? "font-semibold text-bad" : "text-muted"}`}>
+            <span className={`font-mono text-[12.5px] shrink-0 ${l.amount > 0 ? "font-semibold text-wait" : "text-muted"}`}>
               {l.value ?? (l.amount > 0 ? inr(l.amount) : "₹0")}
             </span>
           </li>
         ))}
         <li className="flex items-baseline justify-between gap-4 px-4 py-3 bg-paper">
           <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">Total pending</span>
-          <span className={`font-mono text-[14px] font-semibold ${hasDues ? "text-bad" : "text-good"}`}>{inr(dues.total)}</span>
+          <span className={`font-mono text-[14px] font-semibold ${hasDues ? "text-wait" : "text-good"}`}>{inr(dues.total)}</span>
         </li>
       </ul>
       {dues.waived ? (
@@ -257,7 +257,7 @@ export default function Staff() {
   const [user, setUser] = useState(null);
   const [queue, setQueue] = useState([]);
   const [deptInfo, setDeptInfo] = useState(null); // { name, officerTitle, checks, icon } from backend
-  const [tab, setTab] = useState("PENDING");
+  const [tab, setTab] = useState("REQUESTS");
   const [active, setActive] = useState(null);     // clearance opened in the detail view
   const [decision, setDecision] = useState(null); // {item, action}
   const [toast, setToast] = useState("");
@@ -293,7 +293,14 @@ export default function Staff() {
   // anything cancelled that appears here is read-only history.
   const pending = queue.filter((c) => c.status === "PENDING" && !c.requestCancelled);
   const history = queue.filter((c) => c.status !== "PENDING" || c.requestCancelled);
-  const rows = tab === "PENDING" ? pending : history;
+  const noDuesRequests = pending.filter((c) => !(c.dues?.status === "DUES_FOUND" && (c.dues?.total || 0) > 0));
+  const activeDuesRequests = pending.filter((c) => (c.dues?.status === "DUES_FOUND" && (c.dues?.total || 0) > 0));
+  const totalRequests = queue.length;
+  const noDuesApproved = queue.filter((c) => c.status === "APPROVED" && !(c.dues?.status === "DUES_FOUND" && (c.dues?.total || 0) > 0)).length;
+  const studentsWithActiveDues = new Set(
+    queue.filter((c) => !c.requestCancelled && c.dues?.status === "DUES_FOUND" && (c.dues?.total || 0) > 0)
+      .map((c) => c.student.rollNo)
+  ).size;
 
   const flashDone = (approved) => {
     setDecision(null);
@@ -326,14 +333,7 @@ export default function Staff() {
             <h1 className="display text-3xl sm:text-4xl mt-1 font-semibold">{officeName}</h1>
           </div>
         </div>
-        <div className="flex gap-1 border border-line rounded-lg p-1">
-          {[["PENDING", `Pending · ${pending.length}`], ["HISTORY", "Ledger"]].map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)}
-              className={`px-3.5 py-1.5 rounded-md text-[12.5px] font-semibold transition ${tab === key ? "bg-ink text-paper" : "text-muted hover:text-ink"}`}>
-              {label}
-            </button>
-          ))}
-        </div>
+
       </div>
 
       <p className="text-[12.5px] text-muted mt-3 leading-relaxed flex items-center gap-2">
@@ -348,76 +348,167 @@ export default function Staff() {
       )}
       {loadError && <p className="mt-4 text-[13px] text-bad flex items-center gap-2"><Icon name="alert" size={15} />{loadError}</p>}
 
-      <div className="card mt-6 overflow-hidden overflow-x-auto">
-        <table className="rule-table min-w-[720px]">
-          <thead>
-            <tr>
-              <th>Student</th><th>Purpose</th><th>Dues</th><th>Filed</th><th>Status</th><th className="!text-right">Review</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={6} className="!py-14 text-center">
-                <Icon name="inbox" size={26} className="mx-auto text-muted" />
-                <p className="text-[13.5px] text-muted mt-3">
-                  {tab === "PENDING"
-                    ? `Nothing awaits the ${officerTitle} right now. New files appear here automatically.`
-                    : "No decisions on the ledger yet."}
-                </p>
-              </td></tr>
-            )}
-            {rows.map((c) => (
-              <tr key={c.id} className="cursor-pointer" onClick={() => openFile(c.id)}>
-                <td>
-                  <p className="font-semibold text-[13.5px]">{c.student.name}</p>
-                  <p className="font-mono text-[11px] text-muted">{c.student.rollNo}</p>
-                </td>
-                <td className="text-[13px]">{c.request.purpose}</td>
-                <td>
-                  {c.dues ? (
-                    c.dues.status === "DUES_FOUND" ? (
-                      <span className="badge badge-bad">DUES {inr(c.dues.total)}</span>
-                    ) : (
-                      <span className="badge badge-ink">NO DUES</span>
-                    )
-                  ) : (
-                    <span className="font-mono text-[10px] text-muted">—</span>
-                  )}
-                </td>
-                <td className="text-[13px] text-muted" title={fullDate(c.request.createdAt)}>{relTime(c.request.createdAt)}</td>
-                <td>
-                  {c.requestCancelled ? (
-                    <span className="badge badge-bad">Request cancelled</span>
-                  ) : c.status === "PENDING" ? (
-                    <span className="badge badge-wait"><span className="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-wait relative" />Pending</span>
-                  ) : c.status === "APPROVED" ? (
-                    <>
-                      <span className="badge badge-good">Cleared</span>
-                      <p className="font-mono text-[10px] text-good mt-1.5">SIGN {c.signatureHash}</p>
-                    </>
-                  ) : (
-                    <>
-                      <span className="badge badge-bad">Rejected</span>
-                      <p className="text-[11.5px] text-bad mt-1.5 max-w-[240px]">&ldquo;{c.remarks}&rdquo;</p>
-                    </>
-                  )}
-                </td>
-                <td className="!text-right whitespace-nowrap">
-                  {c.requestCancelled ? (
-                    <span className="font-mono text-[10px] text-muted">READ-ONLY · WORKFLOW STOPPED</span>
-                  ) : c.status === "PENDING" ? (
-                    <button className="btn btn-outline btn-sm" onClick={(e) => { e.stopPropagation(); openFile(c.id); }}>
-                      Open file <Icon name="arrow-right" size={13} />
-                    </button>
-                  ) : (
-                    <span className="font-mono text-[10px] text-muted">DECIDED</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+        {[
+          ["Total Requests", totalRequests],
+          ["No-Dues Approved", noDuesApproved],
+          ["Pending Requests", pending.length],
+          ["Students with Active Dues", studentsWithActiveDues],
+        ].map(([label, value]) => (
+          <div key={label} className="card p-4">
+            <p className="kicker !text-[9.5px]">{label}</p>
+            <p className="display text-2xl font-semibold mt-2 tabular-nums">{value}</p>
+          </div>
+        ))}
       </div>
+
+      <div className="inline-flex mt-6 rounded-md border border-line bg-paper p-1">
+        {[['REQUESTS', 'Requests'], ['HISTORY', 'History']].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={`px-4 py-2 rounded-md text-[12.5px] font-semibold transition ${tab === key ? 'bg-ink text-paper' : 'text-muted hover:text-ink'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "REQUESTS" ? (
+        <div className="mt-6 space-y-6">
+          <div className="card p-0 overflow-hidden">
+            <div className="px-5 py-4 border-b border-line">
+              <p className="kicker">Students with No Dues</p>
+            </div>
+            {noDuesRequests.length === 0 ? (
+              <p className="px-5 py-8 text-[13px] text-muted">No current requests are eligible for approval.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="rule-table min-w-[760px]">
+                  <thead>
+                    <tr>
+                      <th>Student</th><th>ID</th><th>Purpose</th><th>Filed date</th><th>Status</th><th className="!text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {noDuesRequests.map((c) => (
+                      <tr key={c.id} className="cursor-pointer" onClick={() => openFile(c.id)}>
+                        <td>
+                          <p className="font-semibold text-[13px]">{c.student.name}</p>
+                        </td>
+                        <td className="font-mono text-[11px] text-muted">{c.student.rollNo}</td>
+                        <td className="text-[13px]">{c.request.purpose}</td>
+                        <td className="text-[13px] text-muted" title={fullDate(c.request.createdAt)}>{relTime(c.request.createdAt)}</td>
+                        <td>
+                          <span className="badge badge-good">Eligible</span>
+                        </td>
+                        <td className="!text-right whitespace-nowrap">
+                          <div className="flex justify-end gap-2">
+                            <button className="btn btn-outline btn-sm" onClick={(e) => { e.stopPropagation(); openFile(c.id); }}>
+                              View
+                            </button>
+                            <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); setDecision({ item: c, action: "APPROVE" }); }}>
+                              Approve
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="card p-0 overflow-hidden">
+            <div className="px-5 py-4 border-b border-line">
+              <p className="kicker">Students with Active Dues</p>
+            </div>
+            {activeDuesRequests.length === 0 ? (
+              <p className="px-5 py-8 text-[13px] text-muted">No current requests with outstanding dues.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="rule-table min-w-[920px]">
+                  <thead>
+                    <tr>
+                      <th>Student</th><th>ID</th><th>Purpose</th><th>Due details</th><th>Amount</th><th>Filed date</th><th>Status</th><th className="!text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeDuesRequests.map((c) => {
+                      const dueLabels = (c.dues?.lines || []).filter((l) => (l.amount || 0) > 0).map((l) => l.label).slice(0, 2);
+                      return (
+                        <tr key={c.id} className="cursor-pointer" onClick={() => openFile(c.id)}>
+                          <td>
+                            <p className="font-semibold text-[13px]">{c.student.name}</p>
+                          </td>
+                          <td className="font-mono text-[11px] text-muted">{c.student.rollNo}</td>
+                          <td className="text-[13px]">{c.request.purpose}</td>
+                          <td className="text-[12.5px] text-muted">{dueLabels.length ? dueLabels.join(' · ') : 'Outstanding dues'}</td>
+                          <td className="font-mono text-[12.5px] font-semibold text-wait">{inr(c.dues?.total)}</td>
+                          <td className="text-[13px] text-muted" title={fullDate(c.request.createdAt)}>{relTime(c.request.createdAt)}</td>
+                          <td><span className="badge badge-wait">Pending</span></td>
+                          <td className="!text-right whitespace-nowrap">
+                            <button className="btn btn-outline btn-sm" onClick={(e) => { e.stopPropagation(); openFile(c.id); }}>
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="card mt-6 overflow-hidden overflow-x-auto">
+          <table className="rule-table min-w-[820px]">
+            <thead>
+              <tr>
+                <th>Student</th><th>ID</th><th>Purpose</th><th>Approved / rejected date</th><th>Processed by</th><th>Status</th><th className="!text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.length === 0 && (
+                <tr><td colSpan={7} className="!py-14 text-center">
+                  <Icon name="inbox" size={26} className="mx-auto text-muted" />
+                  <p className="text-[13.5px] text-muted mt-3">No decisions on the ledger yet.</p>
+                </td></tr>
+              )}
+              {history.map((c) => (
+                <tr key={c.id} className="cursor-pointer" onClick={() => openFile(c.id)}>
+                  <td>
+                    <p className="font-semibold text-[13px]">{c.student.name}</p>
+                  </td>
+                  <td className="font-mono text-[11px] text-muted">{c.student.rollNo}</td>
+                  <td className="text-[13px]">{c.request.purpose}</td>
+                  <td className="text-[13px] text-muted" title={fullDate(c.signedAt || c.request.updatedAt || c.request.createdAt)}>
+                    {fullDate(c.signedAt || c.request.updatedAt || c.request.createdAt)}
+                  </td>
+                  <td className="text-[13px] text-muted">{c.approvedBy || "—"}</td>
+                  <td>
+                    {c.requestCancelled ? (
+                      <span className="badge badge-bad">Cancelled</span>
+                    ) : c.status === "APPROVED" ? (
+                      <span className="badge badge-good">Approved</span>
+                    ) : (
+                      <span className="badge badge-bad">Rejected</span>
+                    )}
+                  </td>
+                  <td className="!text-right whitespace-nowrap">
+                    <button className="btn btn-outline btn-sm" onClick={(e) => { e.stopPropagation(); openFile(c.id); }}>
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <p className="kicker !text-[9.5px] mt-4 text-center">
         Every decision is signed, timestamped and written to the institutional audit trail — actor, office, status and comment.

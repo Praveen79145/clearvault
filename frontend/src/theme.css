@@ -7,34 +7,34 @@
    "Registrar editorial" — ink on paper. Hairline rules, solid ink actions,
    serif display faces, tabular data. Deliberately anti-gradient.        */
 :root {
-  --paper: #f7f5ef;
-  --surface: #fffefb;
-  --ink: #1b211d;
-  --muted: #66716b;
-  --line: #e4dfd2;
-  --line-strong: #c9c2ae;
-  --brand: #0e6b4f;
-  --brand-strong: #0a513c;
-  --on-brand: #f4faf7;
-  --good: #15803d;
-  --wait: #b45309;
-  --bad: #b42318;
-  --shadow: 0 1px 2px rgba(27, 33, 29, 0.05), 0 8px 24px -16px rgba(27, 33, 29, 0.18);
+  --paper: #f6f8fb;
+  --surface: #ffffff;
+  --ink: #17212f;
+  --muted: #57657d;
+  --line: #e8edf3;
+  --line-strong: #d8dfeb;
+  --brand: #1d7a5b;
+  --brand-strong: #155c47;
+  --on-brand: #effdf8;
+  --good: #1d8f69;
+  --wait: #d58a00;
+  --bad: #c63b46;
+  --shadow: 0 1px 2px rgba(18, 28, 37, 0.05), 0 16px 28px -20px rgba(18, 28, 37, 0.18);
 }
 .dark {
-  --paper: #101512;
-  --surface: #161d19;
-  --ink: #e9ede9;
-  --muted: #8fa098;
-  --line: #28332d;
-  --line-strong: #3a463f;
-  --brand: #4cb98f;
-  --brand-strong: #63cca2;
-  --on-brand: #0d1712;
-  --good: #4ade80;
-  --wait: #fbbf24;
-  --bad: #f87171;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.6);
+  --paper: #111827;
+  --surface: #171f2d;
+  --ink: #edf3ff;
+  --muted: #9ba9c7;
+  --line: #273349;
+  --line-strong: #3a4b69;
+  --brand: #7c9cff;
+  --brand-strong: #96b3ff;
+  --on-brand: #101b33;
+  --good: #5dd4a4;
+  --wait: #f4bb5f;
+  --bad: #f06d7a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.42), 0 12px 30px -18px rgba(0, 0, 0, 0.7);
 }
 
 @theme inline {
@@ -98,9 +98,9 @@ body {
   cursor: pointer; user-select: none; white-space: nowrap;
 }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn-primary { background: var(--ink); color: var(--paper); }
-.btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 88%, var(--brand)); }
-.btn-brand { background: var(--brand); color: var(--on-brand); }
+.btn-primary { background: var(--good); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--brand-strong); }
+.btn-brand { background: var(--good); color: #fff; }
 .btn-brand:hover:not(:disabled) { background: var(--brand-strong); }
 .btn-outline { border-color: var(--line-strong); color: var(--ink); background: transparent; }
 .btn-outline:hover:not(:disabled) { border-color: var(--ink); }

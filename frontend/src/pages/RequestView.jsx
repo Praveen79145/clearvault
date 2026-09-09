@@ -14,7 +14,7 @@ const META = {
 };
 const OVERALL = {
   IN_PROGRESS: { badge: "badge-wait", label: "In progress" },
-  ACTION_REQUIRED: { badge: "badge-bad", label: "Action required" },
+  ACTION_REQUIRED: { badge: "badge-wait", label: "Action required" },
   COMPLETED: { badge: "badge-good", label: "Certificate issued" },
   CANCELLED: { badge: "badge-bad", label: "Cancelled" },
 };
@@ -358,7 +358,7 @@ export default function RequestView() {
                 )}
                 {c.status === "REJECTED" && (
                   <div>
-                    <p className="text-[13px] text-bad font-semibold">Rejected — Dues found.</p>
+                    <p className="text-[13px] text-wait font-semibold">Rejected — Dues found.</p>
                     <p className="text-[13px] text-bad mt-1">&ldquo;{c.remarks}&rdquo;</p>
                     {c.approvedBy && <p className="text-[12px] text-muted mt-1">— {c.approvedBy}</p>}
                   </div>

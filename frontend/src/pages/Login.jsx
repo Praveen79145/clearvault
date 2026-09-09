@@ -53,7 +53,8 @@ export function LoginForm() {
 
   const handleGoogle = () => {
     clearMessages();
-    window.location.href = "/api/auth/google";
+    const returnTo = encodeURIComponent(window.location.origin);
+    window.location.href = `/api/auth/google?returnTo=${returnTo}`;
   };
 
   const handleLogin = async (e) => {

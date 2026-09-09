@@ -57,7 +57,7 @@ export default function DepartmentTracker({ clearances, requestType, overall, co
     const getCompactVisual = (vStatus) => {
         switch(vStatus) {
            case "APPROVED": return { label: "Approved", icon: <Icon name="check" size={11} className="text-good" />, bg: "bg-good/10", color: "text-good" };
-           case "REJECTED": return { label: "Action Req", icon: <Icon name="x" size={10} className="text-bad" />, bg: "bg-bad/10", color: "text-bad" };
+          case "REJECTED": return { label: "Action Req", icon: <Icon name="x" size={10} className="text-wait" />, bg: "bg-wait/10", color: "text-wait" };
            case "CURRENT": return { label: "Under Review", icon: <div className="w-1.5 h-1.5 rounded-full bg-wait" />, bg: "bg-wait/10", color: "text-wait" };
            case "COMPLETED": return { label: "Ready", icon: <Icon name="check" size={11} className="text-brand" />, bg: "bg-brand/10", color: "text-brand" };
            case "PENDING":
@@ -158,7 +158,7 @@ export default function DepartmentTracker({ clearances, requestType, overall, co
                     )}
                     {c.status === "REJECTED" && (
                       <>
-                        <p className="text-bad font-medium">⚠ Due / Action Required</p>
+                        <p className="text-wait font-medium">⚠ Due / Action Required</p>
                         <p className="text-[12px] mt-1">
                           Returned by <b className="text-ink">{c.approvedBy || "Officer"}</b>
                         </p>

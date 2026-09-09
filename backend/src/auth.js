@@ -10,7 +10,18 @@ export const makeSessionValue = (userId) => {
 };
 
 const parseCookies = (header = "") =>
-  Object.fromEntries(header.split(";").map((c) => c.trim().split("=").map((s) => decodeURIComponent(s))).filter((p) => p[0]));
+  Object.fromEntries(
+    (header.split(";") || [])
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .map((segment) => {
+        const idx = segment.indexOf("=");
+        if (idx === -1) return [segment, ""];
+        const key = segment.slice(0, idx);
+        const value = decodeURIComponent(segment.slice(idx + 1));
+        return [key, value];
+      })
+  );
 
 export const userFromRequest = async (req) => {
   const val = parseCookies(req.headers.cookie || "")[COOKIE];
@@ -48,11 +59,14 @@ const buildCookieString = (cookieValue, maxAge) => {
   return `${cookieValue}; ${secure ? "Secure; " : ""}HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=${maxAge}`;
 };
 
-export const setSessionCookie = (res, userId) =>
-  res.setHeader("Set-Cookie", buildCookieString(`${COOKIE}=${encodeURIComponent(makeSessionValue(userId))}`, 7 * 24 * 3600));
+export const setSessionCookie = (res, userId) => {
+  const cookieValue = `${COOKIE}=${encodeURIComponent(makeSessionValue(userId))}`;
+  res.setHeader("Set-Cookie", buildCookieString(cookieValue, 7 * 24 * 3600));
+};
 
-export const clearSessionCookie = (res) =>
-  res.setHeader("Set-Cookie", buildCookieString(`${COOKIE}=`, 0));
+export const clearSessionCookie = (res) => {
+  res.setHeader("Set-Cookie", buildCookieString(`${COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`, 0));
+};
 
 export const homeFor = (role) => {
   const normalized = role === "AUTHORITY" ? "STAFF" : role;

@@ -10,7 +10,7 @@ const inr = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
 
 const OV = {
   IN_PROGRESS: ["badge-wait", "In progress"],
-  ACTION_REQUIRED: ["badge-bad", "Action required"],
+  ACTION_REQUIRED: ["badge-wait", "Action required"],
   COMPLETED: ["badge-good", "Completed"],
   CANCELLED: ["badge-bad", "Cancelled"],
 };
@@ -122,12 +122,12 @@ function DuesDetails({ department, student, onClose, onPaid }) {
                 {label === "Books pending" ? (
                   <button onClick={() => setShowBooks((s) => !s)} className="w-full text-left flex items-center justify-between gap-4">
                     <span className="text-muted">{label}</span>
-                    <span className={value ? "font-mono font-semibold text-bad" : "text-good font-medium"}>{value || "0"}</span>
+                    <span className={value ? "font-mono font-semibold text-wait" : "text-good font-medium"}>{value || "0"}</span>
                   </button>
                 ) : (
                   <>
                     <span className="text-muted">{label}</span>
-                    <span className={value ? "font-mono font-semibold text-bad" : "text-good font-medium"}>{value || "Cleared"}</span>
+                    <span className={value ? "font-mono font-semibold text-wait" : "text-good font-medium"}>{value || "Cleared"}</span>
                   </>
                 )}
               </div>
@@ -187,13 +187,13 @@ function DuesDetails({ department, student, onClose, onPaid }) {
             )}
 
             <div className="flex justify-between gap-4 px-4 py-3 bg-paper text-[13px] font-semibold">
-              <span>Total</span><span className={outstanding ? "font-mono text-bad" : "text-good"}>{outstanding ? inr(department.dues.total) : "No dues"}</span>
+              <span>Total</span><span className={outstanding ? "font-mono text-wait" : "text-good"}>{outstanding ? inr(department.dues.total) : "No dues"}</span>
             </div>
           </div>
           {department.officerDescription && (
             <p className="mt-4 border border-line rounded-lg bg-paper px-4 py-3 text-[12.5px] text-muted"><b className="text-ink">Officer note:</b> {department.officerDescription}</p>
           )}
-          <p className={`mt-4 text-[13px] font-semibold ${outstanding ? "text-bad" : "text-good"}`}>
+          <p className={`mt-4 text-[13px] font-semibold ${outstanding ? "text-wait" : "text-good"}`}>
             Status: {outstanding ? "Pending" : "Cleared"}
           </p>
           {outstanding && (
@@ -223,15 +223,15 @@ function PendingDues({ departments, onDetails }) {
           const rows = dueRows(d).filter(([, value]) => value);
           return <div key={d.id} className="card p-4 shadow-sm">
             <div className="flex justify-between items-start gap-2"><div className="flex items-center gap-2"><span className="w-7 h-7 rounded border border-line grid place-items-center text-brand"><Icon name={d.icon} size={13} /></span><p className="font-semibold text-[13px]">{d.short}</p></div>
-              {outstanding ? <span className="badge badge-bad">Pending</span> : <span className="badge badge-good"><Icon name="check" size={11} /> Cleared</span>}
+              {outstanding ? <span className="badge badge-wait">Pending</span> : <span className="badge badge-good"><Icon name="check" size={11} /> Cleared</span>}
             </div>
-            {outstanding ? <div className="mt-3 space-y-1.5">{rows.map(([label, value]) => <p key={label} className="flex justify-between gap-2 text-[11.5px] text-muted"><span>{label}</span><b className="font-mono text-bad">{value}</b></p>)}</div> : <p className="mt-4 text-[12px] text-good flex gap-1.5 items-center"><Icon name="check" size={12} /> No dues</p>}
-            {outstanding && <p className="font-mono text-[12px] font-semibold text-bad mt-3 pt-2.5 border-t border-line">Total {inr(d.dues.total)}</p>}
+            {outstanding ? <div className="mt-3 space-y-1.5">{rows.map(([label, value]) => <p key={label} className="flex justify-between gap-2 text-[11.5px] text-muted"><span>{label}</span><b className="font-mono text-wait">{value}</b></p>)}</div> : <p className="mt-4 text-[12px] text-good flex gap-1.5 items-center"><Icon name="check" size={12} /> No dues</p>}
+            {outstanding && <p className="font-mono text-[12px] font-semibold text-wait mt-3 pt-2.5 border-t border-line">Total {inr(d.dues.total)}</p>}
             <button onClick={() => onDetails(d)} className="mt-3 text-[12px] font-semibold text-brand inline-flex items-center gap-1 hover:underline">View details <Icon name="arrow-right" size={12} /></button>
           </div>;
         })}
       </div>
-      <p className="mt-3 text-[12.5px] text-muted"><b className={pending.length ? "text-ink" : "text-good"}>{pending.length} department{pending.length === 1 ? " has" : "s have"} pending dues</b>{pending.length ? <> · <span className="font-mono font-semibold text-bad">{inr(total)} total outstanding</span></> : " · all shown departments are clear"}</p>
+      <p className="mt-3 text-[12.5px] text-muted"><b className={pending.length ? "text-ink" : "text-good"}>{pending.length} department{pending.length === 1 ? " has" : "s have"} pending dues</b>{pending.length ? <> · <span className="font-mono font-semibold text-wait">{inr(total)} total outstanding</span></> : " · all shown departments are clear"}</p>
     </section>
   );
 }

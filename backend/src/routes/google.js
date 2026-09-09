@@ -13,20 +13,46 @@ import { setSessionCookie, resolveUserHome } from "../auth.js";
 
 const router = Router();
 
+const isProduction = process.env.NODE_ENV === "production" || (process.env.BACKEND_URL || "").startsWith("https://") || (process.env.FRONTEND_URL || "").startsWith("https://");
+const DEFAULT_BACKEND_URL = isProduction ? "https://clearvault-backend.onrender.com" : "http://localhost:4000";
+const DEFAULT_FRONTEND_URL = isProduction ? "https://clearvault-alpha.vercel.app" : "http://localhost:5173";
+
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const BACKEND_URL = (process.env.BACKEND_URL || "http://localhost:4000").replace(/\/$/, "");
-const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
-const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || `${BACKEND_URL}/api/auth/google/callback`;
+const BACKEND_URL = (process.env.BACKEND_URL || DEFAULT_BACKEND_URL).replace(/\/$/, "");
+const FRONTEND_URL = (process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL).replace(/\/$/, "");
+const CALLBACK_URL = (process.env.GOOGLE_CALLBACK_URL || `${BACKEND_URL}/api/auth/google/callback`).replace(/\/$/, "");
 const STATE_COOKIE = "cv_oauth_state";
+const RETURN_COOKIE = "cv_oauth_return";
 
-const fail = (res, code, extra = "") => res.redirect(`${FRONTEND_URL}/login?oauth=${code}${extra}`);
-const setCookie = (res, str) => res.setHeader("Set-Cookie", str);
-const stateCookieString = (state, maxAge = 600) => {
-  const secure = process.env.NODE_ENV === "production" || (process.env.GOOGLE_CALLBACK_URL || "").startsWith("https://");
-  const sameSite = secure ? "None" : "Lax";
-  return `${STATE_COOKIE}=${state}; ${secure ? "Secure; " : ""}HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=${maxAge}`;
+const normalizeOrigin = (value) => {
+  const candidate = String(value || "").trim().replace(/\/$/, "");
+  if (!candidate) return FRONTEND_URL;
+  try {
+    const parsed = new URL(candidate);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return candidate;
+  }
 };
+
+const parseCookies = (header = "") =>
+  Object.fromEntries(
+    (header.split(";") || [])
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const idx = part.indexOf("=");
+        if (idx === -1) return [part, ""];
+        const key = part.slice(0, idx);
+        const value = decodeURIComponent(part.slice(idx + 1));
+        return [key, value];
+      })
+  );
+
+const fail = (res, code, extra = "", redirectOrigin = FRONTEND_URL) =>
+  res.redirect(`${normalizeOrigin(redirectOrigin)}/login?oauth=${code}${extra}`);
+const setCookies = (res, values) => res.setHeader("Set-Cookie", values);
 // Step logger — safe fields only (never secrets, tokens, or passwords)
 const step = (msg, obj = {}) => {
   const extra = Object.entries(obj).map(([k, v]) => `${k}=${v}`).join(" ");
@@ -34,13 +60,20 @@ const step = (msg, obj = {}) => {
 };
 
 // ── Step 1: send the user to Google's real account chooser ──────────────────
-router.get("/", (_req, res) => {
+router.get("/", (req, res) => {
   if (!CLIENT_ID || !CLIENT_SECRET) {
     console.warn("[google] start called but GOOGLE_CLIENT_ID/SECRET are not set — see GOOGLE_SETUP.md");
     return fail(res, "not_configured");
   }
+
+  const returnOrigin = normalizeOrigin(
+    req.query.returnTo || req.headers.origin || req.headers.referer || FRONTEND_URL
+  );
   const state = crypto.randomBytes(16).toString("hex");
-  setCookie(res, stateCookieString(state, 600));
+  setCookies(res, [
+    `${STATE_COOKIE}=${state}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600`,
+    `${RETURN_COOKIE}=${encodeURIComponent(returnOrigin)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600`,
+  ]);
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", CLIENT_ID);
   url.searchParams.set("redirect_uri", CALLBACK_URL);
@@ -48,7 +81,7 @@ router.get("/", (_req, res) => {
   url.searchParams.set("scope", "openid email profile");
   url.searchParams.set("prompt", "select_account"); // ALWAYS show the account chooser
   url.searchParams.set("state", state);
-  step("start → redirecting to Google account chooser", { callback: CALLBACK_URL });
+  step("start → redirecting to Google account chooser", { callback: CALLBACK_URL, returnOrigin });
   res.redirect(url.toString());
 });
 
@@ -62,15 +95,17 @@ router.get("/callback", async (req, res) => {
   if (!code) { step("callback had no authorization code"); return fail(res, "invalid_response"); }
 
   // CSRF: the state must match the cookie we set before leaving
-  const cookies = Object.fromEntries(
-    (req.headers.cookie || "").split(";").map((c) => c.trim().split("=")).filter((p) => p[0])
-  );
-  setCookie(res, stateCookieString("", 0));
+  const cookies = parseCookies(req.headers.cookie || "");
+  const returnOrigin = normalizeOrigin(cookies[RETURN_COOKIE] || FRONTEND_URL);
+  setCookies(res, [
+    `${STATE_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+    `${RETURN_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+  ]);
   if (!state || !cookies[STATE_COOKIE] || state !== cookies[STATE_COOKIE]) {
     step("state mismatch — possible CSRF or expired attempt");
-    return fail(res, "invalid_state");
+    return fail(res, "invalid_state", "", returnOrigin);
   }
-  step("state check passed");
+  step("state check passed", { returnOrigin });
 
   try {
     // Exchange code → tokens (client secret stays here, server-side)
@@ -120,7 +155,7 @@ router.get("/callback", async (req, res) => {
     if (!verdict.ok) {
       step("RGUKT policy rejected the email", { email: verdict.email || "(none)", reason: verdict.reason });
       const emailParam = verdict.email ? `&email=${encodeURIComponent(verdict.email)}` : "";
-      return fail(res, verdict.reason, emailParam);
+      return fail(res, verdict.reason, emailParam, returnOrigin);
     }
     step("RGUKT policy PASS", { campus: verdict.campusPrefix, studentId: verdict.studentId });
 
@@ -132,17 +167,17 @@ router.get("/callback", async (req, res) => {
       console.error("[google] ✘ USER LOOKUP/PROVISION FAILED — this is your oauth=server_error cause:", dbErr.message);
       if (/google_sub|picture|column/i.test(dbErr.message))
         console.error("[google] ➜ Your database schema is stale. Run the two ALTER statements at the bottom of backend/supabase/schema.sql in the Supabase SQL Editor.");
-      return fail(res, "server_error");
+      return fail(res, "server_error", "", returnOrigin);
     }
     step("user ready", { userId: user.id, rollNo: user.rollNo, campus: verdict.campusPrefix });
 
     setSessionCookie(res, user.id);
-    const redirectTarget = resolveUserHome(user);
-    step("session created → redirecting", { to: `${FRONTEND_URL}${redirectTarget}` });
-    return res.redirect(`${FRONTEND_URL}${redirectTarget}`);
+    const successTarget = `${returnOrigin}/student`;
+    step("session created → redirecting", { to: successTarget });
+    return res.redirect(successTarget);
   } catch (err) {
     console.error("[google] ✘ CALLBACK EXCEPTION:", err.stack || err.message);
-    return fail(res, "server_error");
+    return fail(res, "server_error", "", returnOrigin);
   }
 });
 

@@ -1,10 +1,30 @@
-// Thin fetch wrapper — same-origin requests proxied to the Express API by Vite.
+const getApiBase = () => {
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+
+  if (!host || host === "localhost" || host === "127.0.0.1") {
+    const envBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
+    if (envBase && !/^http:\/\/(localhost|127\.0\.0\.1):4000$/i.test(envBase)) return envBase;
+    return "http://localhost:4000";
+  }
+
+  if (/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(host)) {
+    return `http://${host}:4000`;
+  }
+
+  const envBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
+  if (envBase) return envBase;
+  return "https://clearvault-backend.onrender.com";
+};
+
+// Use the host that is actually serving the frontend, not a fixed localhost URL.
 export async function api(path, { method = "GET", body } = {}) {
-  const res = await fetch(path, {
+  const base = getApiBase();
+  const url = path.startsWith("http") ? path : `${base}${path}`;
+  const res = await fetch(url, {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
-    credentials: "same-origin",
+    credentials: "include",
   });
   let data = null;
   try { data = await res.json(); } catch { /* empty body */ }
