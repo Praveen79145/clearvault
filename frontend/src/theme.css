@@ -65,6 +65,9 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+a, button, [role="button"], select, summary, .cursor-pointer, .req-card, .btn, .cv-tab, .cv-submit, .cv-google, .cv-link, .cv-eye, .cv-icon-button, .cv-back-signin { cursor: pointer; }
+button:disabled, [disabled], .btn:disabled, a[aria-disabled="true"] { cursor: not-allowed; }
+
 ::selection { background: color-mix(in srgb, var(--brand) 22%, transparent); }
 
 /* ── Components ─────────────────────────────────────────────────────── */
