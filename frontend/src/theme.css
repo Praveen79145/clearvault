@@ -63,6 +63,7 @@ body {
   font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
 a, button, [role="button"], select, summary, .cursor-pointer, .req-card, .btn, .cv-tab, .cv-submit, .cv-google, .cv-link, .cv-eye, .cv-icon-button, .cv-back-signin { cursor: pointer; }
@@ -200,3 +201,27 @@ label.field { display:block; font-size:12px; font-weight:600; letter-spacing:.08
   .print-area { padding: 0 !important; }
   .cert-sheet { box-shadow: none !important; }
 }
+
+/* Small, targeted overrides to ensure stable mobile viewport sizing across Android browsers. */
+/* Use the safe viewport unit (svh) for full-screen utilities to avoid address-bar resizing issues. */
+.min-h-screen { min-height: 100svh !important; }
+.h-screen { height: 100svh !important; }
+
+/* Landing page background handling */
+.landing-bg {
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+  background-color: transparent;
+}
+
+@media (max-width: 640px) {
+  /* On small screens, prefer the top-centered crop so important content stays visible */
+  .landing-bg {
+    background-position: center top;
+    background-size: cover;
+    background-attachment: scroll;
+  }
+}
+

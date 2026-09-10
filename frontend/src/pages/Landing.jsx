@@ -98,8 +98,7 @@ export default function Landing() {
     <div className="min-h-screen bg-surface text-ink">
       <motion.header
         initial={{ opacity: 0, y: -6 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: false, amount: 0.2 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.24 }}
         className="relative z-50 border-b border-line bg-surface/95 backdrop-blur-md"
       >
@@ -124,18 +123,14 @@ export default function Landing() {
 
       <motion.section
         initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: false, amount: 0.2 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 }}
         className="relative min-h-[calc(100svh-70px)] overflow-hidden"
       >
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 landing-bg"
           style={{
             backgroundImage: "url(/campus-bg.png)",
-            backgroundSize: "cover",
-            backgroundPosition: "center center",
-            backgroundRepeat: "no-repeat",
           }}
           aria-hidden="true"
         />
@@ -213,8 +208,7 @@ export default function Landing() {
                 <motion.div
                   key={`${icon}-${l1}`}
                   initial={{ opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: false, amount: 0.3 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.24, delay: index * 0.05 }}
                   className="flex flex-col gap-2"
                 >
@@ -236,8 +230,7 @@ export default function Landing() {
 
       <motion.section
         initial={{ opacity: 0, y: 14 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: false, amount: 0.18 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.08 }}
         className="border-b border-line bg-surface"
       >
@@ -249,12 +242,11 @@ export default function Landing() {
           </h2>
 
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10">
-            {STEPS.map((step, index) => (
+              {STEPS.map((step, index) => (
               <motion.div
                 key={step.n}
                 initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: false, amount: 0.25 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.24, delay: index * 0.06 }}
                 className="border-t-2 border-line-strong pt-4"
               >
@@ -277,8 +269,7 @@ export default function Landing() {
 
       <motion.section
         initial={{ opacity: 0, y: 14 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: false, amount: 0.18 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.12 }}
         className="border-b border-line bg-surface"
       >
@@ -290,12 +281,11 @@ export default function Landing() {
           </h2>
 
           <div className="mt-10 grid md:grid-cols-2 gap-x-10">
-            {FEATURES.map(([icon, title, description], index) => (
+              {FEATURES.map(([icon, title, description], index) => (
               <motion.div
                 key={title}
                 initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: false, amount: 0.25 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.24, delay: index * 0.04 }}
                 className="flex gap-4 py-5 border-b border-line"
               >
@@ -320,8 +310,7 @@ export default function Landing() {
 
       <motion.section
         initial={{ opacity: 0, y: 14 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: false, amount: 0.18 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.16 }}
         className="border-b border-line bg-surface"
       >
@@ -340,8 +329,7 @@ export default function Landing() {
           <div className="grid md:grid-cols-2 gap-6 mt-8 items-start">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false, amount: 0.2 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24 }}
               className="card overflow-hidden"
             >
@@ -402,8 +390,7 @@ export default function Landing() {
 
             <motion.div
               initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false, amount: 0.2 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24, delay: 0.06 }}
               className="card overflow-hidden"
             >
