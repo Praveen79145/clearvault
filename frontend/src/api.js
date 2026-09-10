@@ -1,4 +1,4 @@
-const getApiBase = () => {
+export const getApiBase = () => {
   const host = typeof window !== "undefined" ? window.location.hostname : "";
 
   if (!host || host === "localhost" || host === "127.0.0.1") {

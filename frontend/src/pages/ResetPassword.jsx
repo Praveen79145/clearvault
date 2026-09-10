@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { api } from "../api.js";
 import AuthLayout, { ArrowIcon, AuthField } from "../components/AuthLayout.jsx";
 
 export default function ResetPassword() {
@@ -41,13 +42,10 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const resp = await fetch("/api/auth/reset-password", {
+      const data = await api("/api/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password, confirmPassword }),
+        body: { token, password, confirmPassword },
       });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data.error || data.message || "Unable to reset password.");
       setMessage(data.message || "Password reset successfully.");
     } catch (err) {
       setError(err.message || "Unable to reset password.");

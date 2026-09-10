@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../api.js";
 import AuthLayout, {
   ArrowIcon,
   AuthField,
@@ -88,17 +89,10 @@ export function RegisterForm() {
         payload.dept = form.dept;
       }
 
-      const response = await fetch("/api/auth/register", {
+      const data = await api("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
+        body: payload,
       });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || data.message || "Unable to create your account.");
-      }
 
       navigate("/login", {
         state: { message: data.message || "Account created successfully. Sign in to continue.", email: accountType === "STUDENT" ? payload.email : payload.rollNo },

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { api } from "../api.js";
 import AuthLayout, { ArrowIcon, AuthField, MailIcon, LockIcon, EyeIcon } from "../components/AuthLayout.jsx";
 
 export function ForgotPasswordForm() {
@@ -27,16 +28,10 @@ export function ForgotPasswordForm() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/forgot-password", {
+      const data = await api("/api/auth/forgot-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanedEmail }),
+        body: { email: cleanedEmail },
       });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to verify email.");
-      }
 
       setMessage(data.message || "Email verified. You may now reset your password.");
       setStep("password");
@@ -69,16 +64,10 @@ export function ForgotPasswordForm() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/reset-password", {
+      const data = await api("/api/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanedEmail, password, confirmPassword }),
+        body: { email: cleanedEmail, password, confirmPassword },
       });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || data.message || "Unable to update password.");
-      }
 
       setMessage("Password updated successfully. You can now sign in with your new password.");
       setTimeout(() => {

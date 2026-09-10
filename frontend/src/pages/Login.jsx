@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { api, getApiBase } from "../api.js";
 import AuthLayout, {
   ArrowIcon,
   AuthField,
@@ -54,7 +55,8 @@ export function LoginForm() {
   const handleGoogle = () => {
     clearMessages();
     const returnTo = encodeURIComponent(window.location.origin);
-    window.location.href = `/api/auth/google?returnTo=${returnTo}`;
+    const backendBase = getApiBase();
+    window.location.href = `${backendBase}/api/auth/google?returnTo=${returnTo}`;
   };
 
   const handleLogin = async (e) => {
@@ -78,17 +80,10 @@ export function LoginForm() {
         localStorage.removeItem("cv_remember_email");
       }
 
-      const response = await fetch("/api/auth/login", {
+      const data = await api("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: { email, password },
       });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || data.message || "Invalid email or password.");
-      }
 
       navigate(data.redirect || "/student", { replace: true });
     } catch (err) {
